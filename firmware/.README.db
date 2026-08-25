@@ -1,1 +1,9 @@
+# Firmware
 
+Esta carpeta contiene el código y los archivos relacionados con el control electrónico del robot PROTUD.
+
+Aquí se almacenará el firmware utilizado para controlar los motores, sensores, actuadores y demás componentes electrónicos del prototipo.
+
+También se incluirán las diferentes versiones del código desarrolladas durante el proyecto, permitiendo registrar la evolución del sistema de control y facilitar futuras modificaciones, pruebas y mejoras.
+
+El firmware constituye una parte fundamental para implementar el movimiento y las funciones de control del robot.
