@@ -46,5 +46,3 @@ CREATE TABLE alertas (
     atendida BOOLEAN DEFAULT FALSE
 );
 ```
-
-Crea las tres tablas: usuarios, robots y alertas. Avisame cuando hagas el commit y te paso el de datos_prueba.sql.
