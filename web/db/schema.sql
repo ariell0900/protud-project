@@ -44,4 +44,3 @@ CREATE TABLE alertas (
     fecha_hora TIMESTAMP DEFAULT NOW(),
     atendida BOOLEAN DEFAULT FALSE
 );
-```
