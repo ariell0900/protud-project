@@ -1,5 +1,3 @@
-Acá lo tenés. Copiá todo lo que está adentro del bloque:
-
 ```sql
 -- =====================================
 -- BASE DE DATOS PROTUD
