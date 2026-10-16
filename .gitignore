@@ -1,0 +1,11 @@
+# Configuración privada de PROTUD
+.env
+**/.env
+
+# Entornos virtuales de Python
+.venv/
+**/.venv/
+
+# Archivos temporales de Python
+__pycache__/
+*.pyc
