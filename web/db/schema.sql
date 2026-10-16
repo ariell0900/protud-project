@@ -1,4 +1,3 @@
-```sql
 -- =====================================
 -- BASE DE DATOS PROTUD
 -- Creación de las 3 tablas (16/10/2026)
