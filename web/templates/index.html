@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROTUD | Panel de Vigilancia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>PROTUD</h1>
+        <p>Sistema de Vigilancia Robótica</p>
+    </header>
+
+    <nav>
+        <a href="/">Inicio</a>
+        <a href="/alertas">Alertas</a>
+        <a href="#fotografias">Fotografías</a>
+        <a href="#robots">Robots</a>
+    </nav>
+
+    <main>
+        <h2>Panel principal</h2>
+        <p>Bienvenido al sistema de vigilancia PROTUD.</p>
+
+        <section id="robots">
+            <h3>Estado del robot</h3>
+            <p>Mini Protud - En desarrollo</p>
+        </section>
+
+        <section>
+            <h3>Alertas de seguridad</h3>
+            <p>Consultá los eventos registrados por el sistema.</p>
+            <a href="/alertas">Ver alertas</a>
+        </section>
+
+        <section id="fotografias">
+            <h3>Fotografías</h3>
+            <p>Próximamente: capturas de la ESP32-CAM.</p>
+        </section>
+    </main>
+
+    <footer>
+        <p>PROTUD - Proyecto en desarrollo</p>
+    </footer>
+</body>
+</html>

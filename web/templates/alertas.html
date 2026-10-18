@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alertas | PROTUD</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+    <header>
+        <h1>PROTUD</h1>
+        <p>Sistema de Vigilancia Robótica</p>
+    </header>
+
+    <nav>
+        <a href="/">Inicio</a>
+        <a href="/alertas">Alertas</a>
+        <a href="#">Fotografías</a>
+        <a href="#">Robots</a>
+    </nav>
+
+    <main>
+        <h2>Alertas de seguridad</h2>
+        <p>Registro de eventos detectados por PROTUD.</p>
+
+        {% if alertas %}
+            {% for alerta in alertas %}
+                <section>
+                    <h3>{{ alerta[0] }}</h3>
+                    <p><strong>Robot:</strong> {{ alerta[1] }}</p>
+                    <p><strong>Tipo:</strong> {{ alerta[2] }}</p>
+                    <p><strong>Descripción:</strong> {{ alerta[3] }}</p>
+                    <p><strong>Fecha:</strong> {{ alerta[4] }}</p>
+                    <p>
+                        <strong>Estado:</strong>
+                        {{ 'Atendida' if alerta[5] else 'Pendiente' }}
+                    </p>
+                </section>
+            {% endfor %}
+        {% else %}
+            <p>No hay alertas registradas.</p>
+        {% endif %}
+
+        <a href="/">Volver al panel principal</a>
+    </main>
+</body>
+</html>
