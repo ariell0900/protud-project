@@ -2,7 +2,7 @@
 import os
 from pathlib import Path
 from html import escape
-from telegram_service import enviar_alerta_telegram
+from telegram_service import enviar_alerta_telegram, enviar_foto_telegram
 
 import psycopg
 from dotenv import load_dotenv
@@ -30,6 +30,75 @@ def conectar_db():
 @app.route("/")
 def inicio():
     return render_template("index.html")
+
+# Panel: resumen con números reales
+@app.route("/panel")
+def panel():
+    try:
+        with conectar_db() as conexion:
+            with conexion.cursor() as cursor:
+                cursor.execute("""
+                    SELECT
+                        COUNT(*) FILTER (WHERE NOT atendida),
+                        COUNT(*) FILTER (WHERE fecha_hora >= NOW() - INTERVAL '24 hours'),
+                        COUNT(foto_url)
+                    FROM alertas
+                """)
+                pendientes, ultimas_24h, imagenes = cursor.fetchone()
+
+                cursor.execute("""
+                    SELECT fecha_hora, tipo, atendida
+                    FROM alertas
+                    ORDER BY fecha_hora DESC
+                    LIMIT 5
+                """)
+                ultimas = cursor.fetchall()
+
+        return render_template(
+            "panel.html",
+            pendientes=pendientes,
+            ultimas_24h=ultimas_24h,
+            imagenes=imagenes,
+            ultimas = ultimas
+        )
+
+    except psycopg.Error:
+        app.logger.exception("Error al cargar el panel")
+        return "No se pudo cargar el panel.", 500
+
+@app.route("/robot")
+def robot():
+    try:
+        with conectar_db() as conexion:
+            with conexion.cursor() as cursor:
+                cursor.execute("""
+                    SELECT tipo, descripcion, fecha_hora, atendida
+                    FROM alertas
+                    ORDER BY fecha_hora DESC
+                    LIMIT 1
+                """)
+                ultima = cursor.fetchone()
+
+        return render_template("robot.html", ultima=ultima)
+
+    except psycopg.Error:
+        app.logger.exception("Error al cargar el robot")
+        return "No se pudo cargar la página del robot.", 500
+
+@app.route("/control")
+def control():
+    return render_template("control.html")
+
+@app.route("/fotos")
+def fotos():
+    # Fotos de ejemplo: más adelante las traemos de PostgreSQL
+    lista = [
+        {"archivo": "robot.jpg", "motivo": "Movimiento detectado", "fecha": "18/10/2026 03:15"},
+        {"archivo": "robot.jpg", "motivo": "Obstáculo en el pasillo", "fecha": "17/10/2026 22:40"},
+        {"archivo": "robot.jpg", "motivo": "Patrulla de prueba", "fecha": "17/10/2026 20:05"},
+    ]
+    return render_template("fotos.html", fotos=lista)
+
 
 
 # Comprobar la conexión con PostgreSQL
@@ -94,6 +163,7 @@ def atender_alerta(alerta_id):
                     """,
                     (alerta_id,)
                 )
+                
 
         return redirect(url_for("ver_alertas"))
 
@@ -187,11 +257,12 @@ def simular_alerta():
                 alerta_id = cursor.fetchone()[0]
 
         # La alerta ya quedó guardada en PostgreSQL
-        enviado = enviar_alerta_telegram(
-            robot="Mini Protud",
-            evento="Movimiento detectado (SIMULACIÓN)",
-            ubicacion="Escuela"
-        )
+        enviado = enviar_foto_telegram(
+        robot="Mini Protud",
+        evento="Movimiento detectado (SIMULACIÓN)",
+        ubicacion="Escuela",
+        ruta_foto=Path(__file__).resolve().parent / "static" / "prueba.jpeg"
+    )
 
         mensaje = "Mini Protud detectó movimiento (SIMULACIÓN)"
 
@@ -210,6 +281,27 @@ def simular_alerta():
     except psycopg.Error:
         app.logger.exception("Error al registrar la alerta")
         return {"error": "No se pudo registrar la alerta"}, 500
+
+    # Volver una alerta a pendiente (deshacer)
+@app.route("/alertas/<int:alerta_id>/deshacer", methods=["POST"])
+def deshacer_alerta(alerta_id):
+    try:
+        with conectar_db() as conexion:
+            with conexion.cursor() as cursor:
+                cursor.execute(
+                    """
+                    UPDATE alertas
+                    SET atendida = FALSE
+                    WHERE id = %s
+                    """,
+                    (alerta_id,)
+                )
+
+        return redirect(url_for("ver_alertas"))
+
+    except psycopg.Error:
+        app.logger.exception("Error al deshacer la alerta")
+        return "No se pudo deshacer la alerta.", 500
 
 
 
