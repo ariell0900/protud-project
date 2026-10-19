@@ -9,3 +9,6 @@
 # Archivos temporales de Python
 __pycache__/
 *.pyc
+.coverage
+web/templates/*viej*.html
+*~
