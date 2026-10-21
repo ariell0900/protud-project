@@ -220,7 +220,8 @@ def ver_notificaciones():
                         n.mensaje,
                         n.fecha_envio,
                         n.leida,
-                        n.alerta_id
+                        n.alerta_id ,
+                        n.estado_envio
                     FROM notificaciones AS n
                     ORDER BY n.fecha_envio DESC
                 """)
