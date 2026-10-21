@@ -26,7 +26,8 @@
       <p class="lead text-muted mb-4">
         Protud recorre, detecta y te avisa al instante
       </p>
-      <a href="/login" class="btn btn-primary btn-lg px-4">Iniciar sesión con Google</a>
+      <!-- El botón lleva a la ruta login_google de app.py -->
+      <a href="{{ url_for('login_google') }}" class="btn btn-primary btn-lg px-4">Iniciar sesión con Google</a>
     </div>
   </header>
 
@@ -60,10 +61,10 @@
       </div>
 
       <div class="col-md-4">
-        <div class="card h-100 text-muted"><div class="card-body">
+        <div class="card h-100 shadow-sm"><div class="card-body">
           <h5 class="card-title">👤 Usuarios</h5>
           <p class="card-text">Iniciar sesión con tu cuenta de Google.</p>
-          <span class="badge bg-secondary">Próximamente</span>
+          <span class="badge bg-success">Disponible</span>
         </div></div>
       </div>
 
@@ -76,10 +77,10 @@
       </div>
 
       <div class="col-md-4">
-        <div class="card h-100 shadow-sm"><div class="card-body">
+        <div class="card h-100 text-muted"><div class="card-body">
           <h5 class="card-title">🎮 Control del robot</h5>
           <p class="card-text">Mover a Protud desde la web.</p>
-          <span class="badge bg-secondary">próximamente</span>
+          <span class="badge bg-secondary">Próximamente</span>
         </div></div>
       </div>
 
@@ -106,7 +107,7 @@
           <ul class="list-unstyled">
             <li><a href="/" class="text-secondary text-decoration-none">Inicio</a></li>
             <li><a href="/alertas" class="text-secondary text-decoration-none">Alertas</a></li>
-            <li><a href="/login" class="text-secondary text-decoration-none">Iniciar sesión</a></li>
+            <li><a href="{{ url_for('login_google') }}" class="text-secondary text-decoration-none">Iniciar sesión</a></li>
             <li><a href="#" class="text-secondary text-decoration-none">Documentación</a></li>
             <li><a href="#" class="text-secondary text-decoration-none">Política de privacidad</a></li>
           </ul>
