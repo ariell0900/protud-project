@@ -12,11 +12,12 @@ PROTUD es un robot móvil de vigilancia desarrollado por el Equipo Protud (EEST 
 | Parte | Estado |
 |---|---|
 | Prototipo 1 (cartón, 2 ruedas, control por Bluetooth) | ✅ Funciona |
-| Mini Protud (chasis 3D, ESP32-CAM, 2 motores DC, sensor ultrasónico) | 🔧 En construcción |
-| Base de datos PostgreSQL | ✅ Funciona (5 tablas) |
+| imprimir Mini Protud (chasis 3D) | ✅Terminado
+| (ESP32-CAM, 2 motores DC con caja reductora (500RPM), sensor ultrasónico) | 📦en camino 
+| Base de datos PostgreSQL | 🛵En proceso |
 | Página web Flask + Bootstrap | ✅ Funciona en local |
 | Alertas por Telegram | ✅ Funciona con alertas simuladas |
-| Inicio de sesión con Google (OAuth2) | 🔧 En progreso |
+| Inicio de sesión con Google (OAuth2) |  |✅funciona
 | Conexión robot ↔ web | ⏳ Pendiente |
 
 ---
