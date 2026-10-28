@@ -360,6 +360,38 @@ def callback():
     }
     return redirect(url_for("panel"))
  
+# Lista de usuarios (solo administrador)
+@app.route("/usuarios")
+def usuarios():
+    if session.get("usuario", {}).get("rol") != "administrador":
+        return "No tenés permiso.", 403
+    with conectar_db() as conexion:
+        with conexion.cursor() as cursor:
+            cursor.execute("SELECT id, nombre, email, rol, activo FROM usuarios ORDER BY id")
+            lista = cursor.fetchall()
+    return render_template("usuarios.html", usuarios=lista)
+
+
+# Baja lógica: no borra, solo marca inactivo
+@app.route("/usuarios/<int:id>/baja", methods=["POST"])
+def baja_usuario(id):
+    if session.get("usuario", {}).get("rol") != "administrador":
+        return "No tenés permiso.", 403
+    with conectar_db() as conexion:
+        with conexion.cursor() as cursor:
+            cursor.execute("UPDATE usuarios SET activo = FALSE WHERE id = %s", (id,))
+    return redirect(url_for("usuarios"))
+
+
+# Reactivar usuario
+@app.route("/usuarios/<int:id>/reactivar", methods=["POST"])
+def reactivar_usuario(id):
+    if session.get("usuario", {}).get("rol") != "administrador":
+        return "No tenés permiso.", 403
+    with conectar_db() as conexion:
+        with conexion.cursor() as cursor:
+            cursor.execute("UPDATE usuarios SET activo = TRUE WHERE id = %s", (id,))
+    return redirect(url_for("usuarios"))
  
 # Iniciar el servidor Flask
 if __name__ == "__main__":
