@@ -28,6 +28,11 @@ google = oauth.register(
  
 # Conexión a PostgreSQL
 def conectar_db():
+    # En la nube (Render) usa DATABASE_URL
+    url = os.getenv("DATABASE_URL")
+    if url:
+        return psycopg.connect(url, connect_timeout=5)
+    # En tu compu usa los datos del .env
     return psycopg.connect(
         host=os.getenv("DB_HOST"),
         port=os.getenv("DB_PORT"),
@@ -36,7 +41,6 @@ def conectar_db():
         password=os.getenv("DB_PASSWORD"),
         connect_timeout=5
     )
- 
  
 # Página principal
 @app.route("/")
