@@ -1,0 +1,9 @@
+# Configuración del coverage de PROTUD
+[run]
+# No contamos los tests ni los scripts sueltos que se usaron una vez
+# para armar el bot de Telegram: no son parte de la web.
+omit =
+    tests/*
+    obtener_chat_id.py
+    probar_telegram.py
+    .venv/*
