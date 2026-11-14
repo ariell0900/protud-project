@@ -1,58 +1,341 @@
 <!DOCTYPE html>
+<!-- Le dice al navegador: "esto es HTML5" -->
 <html lang="es">
+<!-- lang="es" = la página está en español -->
 <head>
+    <!-- ==============================
+         CABEZA: lo que no se ve, pero hace falta
+    -->
+    <!-- Codificación: para que anden los acentos y la ñ -->
     <meta charset="UTF-8">
+    <!-- Para que se vea bien en el celu: que se adapte al ancho -->
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Título que aparece en la pestaña del navegador -->
     <title>Usuarios - Protud</title>
+    <!-- Bootstrap: nos da los estilos, botones y tabla ya hechos -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+
+<!-- bg-light = fondo gris clarito de toda la página -->
 <body class="bg-light">
+
+    <!-- container = centra el contenido y le pone márgenes -->
+    <!-- py-4 = padding (espacio) arriba y abajo -->
     <div class="container py-4">
+
+        <!-- =======================================================
+             TÍTULO + BOTÓN VOLVER
+        -->
+        <!-- d-flex = pone los dos elementos en la misma fila -->
+        <!-- justify-content-between = uno a la izquierda, otro a la derecha -->
+        <!-- align-items-center = los centra en vertical -->
+        <!-- mb-3 = margen abajo -->
         <div class="d-flex justify-content-between align-items-center mb-3">
+            <!-- h3 = título grande, pero no tanto como h1 -->
             <h1 class="h3">Usuarios</h1>
+            <!-- Botón para volver al panel -->
+            <!-- url_for('panel') = Flask busca la ruta /panel en app.py -->
+            <!-- btn-outline-secondary = botón con borde gris -->
+            <!-- btn-sm = botón chiquito -->
             <a href="{{ url_for('panel') }}" class="btn btn-outline-secondary btn-sm">Volver al panel</a>
         </div>
 
+        <!-- =======================================================
+             TEXTO EXPLICATIVO
+        -->
+        <!-- text-muted = texto gris, más suave -->
+        <p class="text-muted">
+            Solo administradores. Dar de baja no borra: el usuario queda guardado y se puede reactivar.
+        </p>
+
+        <!-- =======================================================
+             CONTADORES
+
+             ¿Qué es "usuarios"?
+
+             Es la lista que manda app.py desde la función usuarios():
+                 SELECT id, nombre, email, rol, activo FROM usuarios
+
+             Cada "u" es una tupla con 5 datos, en este orden:
+                 u[0] = id       (ej: 1)
+                 u[1] = nombre   (ej: "Ariel")
+                 u[2] = email    (ej: "ariel@gmail.com")
+                 u[3] = rol      (ej: "administrador" o "operador")
+                 u[4] = activo   (True = activo, False = dado de baja)
+
+             Ejemplo real:
+                 (1, "Ariel", "ariel@gmail.com", "administrador", True)
+        -->
+
+        <!-- selectattr(4) = quedate solo con los que tienen u[4] = True (activos) -->
+        <!-- | list | length = convertir a lista y contar cuántos hay -->
+        {% set activos = usuarios | selectattr(4) | list | length %}
+
+        <!-- Total - activos = dados de baja -->
+        {% set bajas = usuarios | length - activos %}
+
+        <!-- =======================================================
+             BUSCADOR + FILTROS
+        -->
+        <!-- d-flex = en fila, flex-wrap = si no entra, baja a otra línea -->
+        <!-- gap-2 = espacio entre el buscador y los botones -->
+        <!-- mb-3 = margen abajo -->
+        <div class="d-flex flex-wrap gap-2 mb-3">
+
+            <!-- BUSCADOR -->
+            <!-- id="buscar" = el JS de abajo lo busca por este id -->
+            <!-- form-control = estilo de input de Bootstrap -->
+            <!-- max-width:260px = que no sea gigante -->
+            <!-- placeholder = texto gris que se ve antes de escribir -->
+            <input id="buscar" class="form-control" style="max-width:260px" placeholder="Buscar nombre o email...">
+
+            <!-- FILTROS -->
+            <!-- btn-group = grupo de botones pegados -->
+            <div class="btn-group" role="group">
+                <!-- data-filtro="todos" = el JS lee este dato para saber qué filtrar -->
+                <!-- active = este botón empieza marcado -->
+                <!-- {{ usuarios|length }} = cantidad total de usuarios -->
+                <button type="button" class="btn btn-outline-dark active" data-filtro="todos">Todos ({{ usuarios|length }})</button>
+
+                <!-- {{ activos }} = variable que calculamos arriba -->
+                <button type="button" class="btn btn-outline-success" data-filtro="activo">Activos ({{ activos }})</button>
+
+                <!-- {{ bajas }} = variable que calculamos arriba -->
+                <button type="button" class="btn btn-outline-secondary" data-filtro="baja">Dados de baja ({{ bajas }})</button>
+            </div>
+        </div>
+
+        <!-- =======================================================
+             TABLA DE USUARIOS
+        -->
+        <!-- table-responsive = en el celu se puede scrollear para el costado -->
         <div class="table-responsive">
-            <table class="table table-striped align-middle bg-white">
-                <thead>
+
+            <!-- table = estilo de tabla de Bootstrap -->
+            <!-- table-striped = filas grises y blancas intercaladas -->
+            <!-- align-middle = centra el contenido en vertical -->
+            <!-- bg-white = fondo blanco -->
+            <!-- id="tabla" = el JS la busca por este id -->
+            <table class="table table-striped align-middle bg-white" id="tabla">
+
+                <!-- CABEZA DE LA TABLA (títulos de columnas) -->
+                <!-- table-dark = fondo negro -->
+                <thead class="table-dark">
                     <tr>
                         <th>Nombre</th>
                         <th>Email</th>
                         <th>Rol</th>
                         <th>Estado</th>
-                        <th>Acción</th>
+                        <!-- text-end = alinea a la derecha -->
+                        <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
+
+                <!-- CUERPO DE LA TABLA (una fila por usuario) -->
                 <tbody>
+
+                    <!-- for = por cada usuario en la lista, repetí esta fila -->
                     {% for u in usuarios %}
-                    <tr>
-                        <td>{{ u[1] }}</td>
-                        <td>{{ u[2] }}</td>
-                        <td>{{ u[3] }}</td>
+
+                    <!--
+                        Guardamos 2 datos en la fila para que el JS pueda filtrar
+                        sin tener que recargar la página:
+
+                        - data-estado: "activo" si u[4] es True, "baja" si es False
+                        - data-texto: nombre + email en minúscula, para buscar
+                          Ejemplo: "ariel ariel@gmail.com"
+                          ~ = en Jinja une textos, | lower = pasa a minúscula
+                    -->
+                    <tr data-estado="{{ 'activo' if u[4] else 'baja' }}" data-texto="{{ (u[1] ~ ' ' ~ u[2]) | lower }}">
+
+                        <!-- COLUMNA NOMBRE -->
                         <td>
+                            <!-- u[1] = nombre -->
+                            {{ u[1] }}
+
+                            <!-- Si este usuario soy yo, muestro un cartelito "vos" -->
+                            <!-- usuario viene de app.py: session.get("usuario") -->
+                            <!-- u[0] = id del usuario de la fila -->
+                            <!-- usuario.id = mi id -->
+                            <!-- Si son iguales, la fila es mía -->
+                            {% if usuario is defined and usuario and u[0] == usuario.id %}
+                                <!-- badge = cartelito chiquito -->
+                                <!-- bg-light = fondo clarito, border = con borde -->
+                                <span class="badge bg-light text-dark border">vos</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- COLUMNA EMAIL -->
+                        <!-- u[2] = email -->
+                        <td>{{ u[2] }}</td>
+
+                        <!-- COLUMNA ROL -->
+                        <td>
+                            <!-- Si u[3] es "administrador", badge amarillo. Si no, celeste -->
+                            <!-- bg-warning = amarillo, bg-info = celeste -->
+                            <!-- text-dark = letras negras para que se lean -->
+                            <span class="badge {% if u[3] == 'administrador' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %}">
+                                <!-- u[3] = rol -->
+                                {{ u[3] }}
+                            </span>
+                        </td>
+
+                        <!-- COLUMNA ESTADO -->
+                        <td>
+                            <!-- u[4] = activo (True / False) -->
                             {% if u[4] %}
+                                <!-- Si está activo: cartel verde -->
                                 <span class="badge bg-success">Activo</span>
                             {% else %}
+                                <!-- Si está dado de baja: cartel gris -->
                                 <span class="badge bg-secondary">Dado de baja</span>
                             {% endif %}
                         </td>
-                        <td>
-                            {% if u[4] %}
-                            <form method="post" action="{{ url_for('baja_usuario', id=u[0]) }}">
-                                <button class="btn btn-danger btn-sm">Dar de baja</button>
-                            </form>
+
+                        <!-- ===================================================
+                             COLUMNA ACCIONES (botones)
+                        -->
+                        <!-- text-end = botones a la derecha -->
+                        <td class="text-end">
+
+                            <!-- Si la fila soy yo mismo, NO muestro botones -->
+                            <!-- ¿Por qué? Para no darme de baja ni cambiarme el rol a mí mismo -->
+                            <!-- Esto es solo visual, app.py también lo bloquea por seguridad -->
+                            {% if usuario is defined and usuario and u[0] == usuario.id %}
+                                <!-- — = rayita, significa "acá no podés hacer nada" -->
+                                <span class="text-muted small">—</span>
+
+                            <!-- Si NO soy yo, sí muestro los botones -->
                             {% else %}
-                            <form method="post" action="{{ url_for('reactivar_usuario', id=u[0]) }}">
-                                <button class="btn btn-success btn-sm">Reactivar</button>
-                            </form>
+
+                            <!-- d-inline-flex = botones en fila -->
+                            <!-- flex-wrap = si no entran, bajan -->
+                            <!-- gap-1 = poquito espacio entre botones -->
+                            <!-- justify-content-end = pegados a la derecha -->
+                            <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+
+                                <!-- ===============================================
+                                     BOTÓN CAMBIAR ROL
+
+                                     ¿Qué hace?
+
+                                     Manda el rol CONTRARIO al que tiene ahora:
+                                     - Si es administrador -> manda "operador"
+                                     - Si es operador -> manda "administrador"
+
+                                     ¿A dónde lo manda?
+                                     A app.py, a la función:
+                                         @app.route("/usuarios/<id>/rol")
+                                         def cambiar_rol(id):
+
+                                     ¿Cómo lo manda?
+                                     Con un <form method="post">
+                                     - action = a qué URL va
+                                     - input hidden = dato escondido que viaja sin verse
+                                     - button = lo que ve el usuario
+                                -->
+                                <form method="post" action="{{ url_for('cambiar_rol', id=u[0]) }}">
+                                    <!-- input escondido con el rol nuevo -->
+                                    <!-- u[0] = id del usuario de esta fila -->
+                                    <!-- u[3] = rol actual -->
+                                    <input type="hidden" name="rol" value="{{ 'operador' if u[3] == 'administrador' else 'administrador' }}">
+                                    <!-- Texto del botón: depende del rol actual -->
+                                    <button class="btn btn-outline-dark btn-sm">
+                                        {{ 'Pasar a operador' if u[3] == 'administrador' else 'Hacer admin' }}
+                                    </button>
+                                </form>
+
+                                <!-- ===============================================
+                                     BOTÓN BAJA / REACTIVAR
+
+                                     Si está activo, muestro "Dar de baja".
+                                     Si está dado de baja, muestro "Reactivar".
+                                -->
+                                {% if u[4] %}
+                                <!-- ESTÁ ACTIVO -> BOTÓN DAR DE BAJA -->
+                                <!-- onsubmit = antes de mandar, pregunta "¿seguro?" -->
+                                <!-- Si ponés Cancelar, no manda nada -->
+                                <form method="post" action="{{ url_for('baja_usuario', id=u[0]) }}" onsubmit="return confirm('¿Dar de baja a {{ u[1] }}?')">
+                                    <!-- btn-danger = botón rojo -->
+                                    <button class="btn btn-danger btn-sm">Dar de baja</button>
+                                </form>
+                                {% else %}
+                                <!-- ESTÁ DADO DE BAJA -> BOTÓN REACTIVAR -->
+                                <form method="post" action="{{ url_for('reactivar_usuario', id=u[0]) }}">
+                                    <!-- btn-success = botón verde -->
+                                    <button class="btn btn-success btn-sm">Reactivar</button>
+                                </form>
+                                {% endif %}
+
+                            </div>
                             {% endif %}
                         </td>
                     </tr>
+
+                    <!-- else del for: si la lista "usuarios" está vacía -->
+                    {% else %}
+                    <!-- colspan="5" = ocupa las 5 columnas -->
+                    <tr><td colspan="5" class="text-center text-muted">Todavía no hay usuarios.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+
+    <!-- =======================================================
+         JAVASCRIPT: BUSCADOR + FILTROS
+         Todo pasa en el navegador, sin recargar la página.
+    -->
+    <script>
+      // ¿Qué filtro está activo ahora?
+      // Puede ser: "todos", "activo" o "baja"
+      // Empieza en "todos" porque el botón Todos tiene class "active"
+      let filtro = "todos";
+
+      // Buscamos todas las filas que tienen data-estado
+      // Son las filas de usuarios, no la fila de "Todavía no hay usuarios"
+      const filas = document.querySelectorAll("#tabla tbody tr[data-estado]");
+
+      // Función que aplica el filtro + la búsqueda
+      function aplicar() {
+        // Leemos lo que escribió el usuario en el buscador
+        // .toLowerCase() = pasamos a minúscula para que no importe mayúscula/minúscula
+        const q = document.getElementById("buscar").value.toLowerCase();
+
+        // Recorremos cada fila
+        filas.forEach(f => {
+          // ¿La fila cumple con el filtro de estado?
+          // Si filtro es "todos", todas cumplen.
+          // Si no, tiene que coincidir con f.dataset.estado ("activo" o "baja")
+          const okEstado = filtro === "todos" || f.dataset.estado === filtro;
+
+          // ¿La fila cumple con la búsqueda?
+          // f.dataset.texto = "nombre email" en minúscula
+          // .includes(q) = ¿contiene lo que busqué?
+          // Si el buscador está vacío, q = "" y siempre da True
+          const okTexto = f.dataset.texto.includes(q);
+
+          // Si cumple las 2 cosas, la mostramos ("")
+          // Si no, la escondemos ("none")
+          f.style.display = (okEstado && okTexto) ? "" : "none";
+        });
+      }
+
+      // Cuando escribís en el buscador, se ejecuta aplicar() en cada letra
+      // "input" = evento que se dispara al escribir, borrar o pegar
+      document.getElementById("buscar").addEventListener("input", aplicar);
+
+      // Cuando apretás un botón de filtro...
+      document.querySelectorAll("[data-filtro]").forEach(b => b.addEventListener("click", () => {
+        // 1. Les sacamos "active" a todos los botones (que se vean apagados)
+        document.querySelectorAll("[data-filtro]").forEach(x => x.classList.remove("active"));
+        // 2. Le ponemos "active" al que apretaste (que se vea prendido)
+        b.classList.add("active");
+        // 3. Guardamos qué filtro elegiste en la variable "filtro"
+        filtro = b.dataset.filtro;
+        // 4. Aplicamos el filtro
+        aplicar();
+      }));
+    </script>
 </body>
 </html>

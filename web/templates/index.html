@@ -1,49 +1,162 @@
 <!DOCTYPE html>
+<!-- Le dice al navegador: "esto es HTML5, la versión nueva de HTML" -->
 <html lang="es">
+<!-- lang="es" = la página está en español -->
 <head>
+  <!-- =======================================================
+       CABEZA: lo que no se ve, pero hace falta
+  -->
+  <!-- Codificación: para que anden los acentos y la ñ -->
   <meta charset="UTF-8">
+  <!-- Para que se vea bien en el celu: que se adapte al ancho -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Título que aparece en la pestaña del navegador -->
   <title>Protud - Robot de vigilancia</title>
+  <!-- Bootstrap: nos da los estilos, botones y tarjetas ya hechos -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
+
+<!-- bg-light = fondo gris clarito de toda la página -->
 <body class="bg-light">
 
-  <!-- 1. ENCABEZADO -->
+  <!-- =======================================================
+       1. ENCABEZADO / BARRA DE NAVEGACIÓN
+
+       Es la barra negra de arriba, que se ve en todas las páginas.
+  -->
+  <!-- navbar = barra de navegación de Bootstrap -->
+  <!-- navbar-dark = letras blancas -->
+  <!-- bg-dark = fondo negro -->
   <nav class="navbar navbar-dark bg-dark">
     <div class="container">
+      <!-- Logo + nombre, a la izquierda -->
+      <!-- href="/" = al hacer clic, va al inicio -->
+      <!-- d-flex = pone logo y texto en fila, gap-2 = espacio entre ellos -->
       <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
+        <!-- Logo: está en web/static/logo.jpg -->
+        <!-- url_for('static', ...) = Flask busca el archivo en static/ -->
         <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo de Protud" height="40">
         Protud
       </a>
-      <a class="btn btn-outline-light btn-sm" href="/alertas">Ver alertas</a>
+
+      <!-- ===================================================
+           BOTONES DE LA DERECHA
+           Cambian según si estás logueado o no.
+
+           ¿Cómo sabe si estás logueado?
+           session es la cajita donde Flask guarda quién sos.
+           session.usuario existe solo si iniciaste sesión.
+           En Jinja, session está disponible en todas las plantillas.
+      -->
+      <div class="d-flex gap-2 flex-wrap">
+
+        <!-- Si ESTÁS logueado, muestro estos botones -->
+        {% if session.get('usuario') %}
+          <!-- Mis Robots: la página nueva de la Etapa 2 -->
+          <!-- Acá ves tus robots y podés unirte con un código -->
+          <a class="btn btn-outline-light btn-sm" href="{{ url_for('mis_robots') }}">🤖 Mis Robots</a>
+
+          <!-- Chat: para hablar con tu equipo por robot -->
+          <a class="btn btn-outline-light btn-sm" href="{{ url_for('chat') }}">💬 Chat</a>
+
+          <!-- Panel: resumen de alertas -->
+          <a class="btn btn-outline-light btn-sm" href="{{ url_for('panel') }}">📊 Panel</a>
+
+          <!-- Alertas: lista completa -->
+          <a class="btn btn-outline-light btn-sm" href="/alertas">Ver alertas</a>
+
+          <!-- Solo si sos administrador, muestro Usuarios -->
+          <!-- session.usuario.rol = "administrador" o "operador" -->
+          {% if session.get('usuario').rol == 'administrador' %}
+            <a class="btn btn-warning btn-sm" href="{{ url_for('usuarios') }}">👤 Usuarios</a>
+          {% endif %}
+
+          <!-- Cerrar sesión -->
+          <a class="btn btn-outline-danger btn-sm" href="{{ url_for('logout') }}">Salir</a>
+
+        <!-- Si NO estás logueado, muestro solo esto -->
+        {% else %}
+          <!-- Ver alertas te va a pedir login porque /alertas tiene @login_required -->
+          <a class="btn btn-outline-light btn-sm" href="/alertas">Ver alertas</a>
+          <!-- Botón principal: ir a Google para loguearse -->
+          <a class="btn btn-primary btn-sm" href="{{ url_for('login_google') }}">Iniciar sesión</a>
+        {% endif %}
+
+      </div>
     </div>
   </nav>
 
-  <!-- 2. HÉROE -->
+  <!-- =======================================================
+       2. HÉROE (la parte grande de arriba)
+  -->
+  <!-- py-5 = espacio arriba y abajo, text-center = centrado -->
+  <!-- bg-white = fondo blanco, border-bottom = línea abajo -->
   <header class="py-5 text-center bg-white border-bottom">
     <div class="container">
+      <!-- display-4 = título gigante, fw-bold = negrita -->
       <h1 class="display-4 fw-bold">Siempre atento, siempre en movimiento</h1>
+      <!-- lead = texto un poco más grande, text-muted = gris -->
       <p class="lead text-muted mb-4">
         Protud recorre, detecta y te avisa al instante
       </p>
-      <!-- El botón lleva a la ruta login_google de app.py -->
-      <a href="{{ url_for('login_google') }}" class="btn btn-primary btn-lg px-4">Iniciar sesión con Google</a>
+
+      <!-- ===================================================
+           BOTONES DEL HÉROE
+           Cambian según si estás logueado o no
+      -->
+      {% if session.get('usuario') %}
+        <!-- Si ya estás logueado, no te pido que inicies sesión de nuevo -->
+        <!-- Te mando directo a lo que más vas a usar -->
+
+        <!-- Botón principal: Mis Robots -->
+        <a href="{{ url_for('mis_robots') }}" class="btn btn-primary btn-lg px-4">🤖 Ir a Mis Robots</a>
+
+        <!-- Botón secundario: Unirme con código -->
+        <!-- #unirse = baja hasta la sección de "Cómo me uno" que está abajo -->
+        <a href="#unirse" class="btn btn-outline-dark btn-lg px-4">🔗 Unirme con código</a>
+
+        <!-- Textito con tu nombre -->
+        <!-- session.usuario.nombre = tu nombre de Google -->
+        <p class="text-muted mt-3 mb-0 small">
+          Hola, {{ session.get('usuario').nombre }} 👋 · Rol: {{ session.get('usuario').rol }}
+        </p>
+
+      {% else %}
+        <!-- Si NO estás logueado, botón para iniciar sesión con Google -->
+        <!-- El botón lleva a la ruta login_google de app.py -->
+        <a href="{{ url_for('login_google') }}" class="btn btn-primary btn-lg px-4">Iniciar sesión con Google</a>
+
+        <!-- Textito abajo para explicar que no hace falta registrarse -->
+        <p class="text-muted mt-3 mb-0 small">
+          Entrás con tu cuenta de Google, sin crear otra contraseña.
+        </p>
+      {% endif %}
     </div>
   </header>
 
-  <!-- 3. CARACTERÍSTICAS -->
+  <!-- =======================================================
+       3. CARACTERÍSTICAS (las tarjetas)
+  -->
   <main class="container py-5">
     <h2 class="text-center mb-4">¿Qué hace Protud?</h2>
+
+    <!-- row = fila, g-4 = espacio entre tarjetas -->
     <div class="row g-4">
 
+      <!-- TARJETA 1: ALERTAS -->
+      <!-- col-md-4 = en compu ocupa 1/3, en celu ocupa todo el ancho -->
       <div class="col-md-4">
+        <!-- card = tarjeta de Bootstrap, h-100 = misma altura que las demás -->
+        <!-- shadow-sm = sombrita suave -->
         <div class="card h-100 shadow-sm"><div class="card-body">
           <h5 class="card-title">🚨 Alertas</h5>
           <p class="card-text">Registra cada detección con fecha, hora y el robot que la vio.</p>
+          <!-- badge = cartelito, bg-success = verde -->
           <span class="badge bg-success">Disponible</span>
         </div></div>
       </div>
 
+      <!-- TARJETA 2: IMÁGENES -->
       <div class="col-md-4">
         <div class="card h-100 shadow-sm"><div class="card-body">
           <h5 class="card-title">📷 Imágenes</h5>
@@ -52,6 +165,7 @@
         </div></div>
       </div>
 
+      <!-- TARJETA 3: NOTIFICACIONES -->
       <div class="col-md-4">
         <div class="card h-100 shadow-sm"><div class="card-body">
           <h5 class="card-title">📲 Notificaciones</h5>
@@ -60,6 +174,7 @@
         </div></div>
       </div>
 
+      <!-- TARJETA 4: USUARIOS -->
       <div class="col-md-4">
         <div class="card h-100 shadow-sm"><div class="card-body">
           <h5 class="card-title">👤 Usuarios</h5>
@@ -68,6 +183,7 @@
         </div></div>
       </div>
 
+      <!-- TARJETA 5: PANEL DE CONTROL -->
       <div class="col-md-4">
         <div class="card h-100 shadow-sm"><div class="card-body">
           <h5 class="card-title">📊 Panel de control</h5>
@@ -76,23 +192,135 @@
         </div></div>
       </div>
 
+      <!-- TARJETA 6: CONTROL DEL ROBOT (todavía no) -->
+      <!-- text-muted = todo gris, porque todavía no está -->
       <div class="col-md-4">
         <div class="card h-100 text-muted"><div class="card-body">
           <h5 class="card-title">🎮 Control del robot</h5>
           <p class="card-text">Mover a Protud desde la web.</p>
+          <!-- bg-secondary = gris -->
           <span class="badge bg-secondary">Próximamente</span>
         </div></div>
       </div>
 
+      <!-- ===================================================
+           TARJETA 7: NUEVA - MIS ROBOTS + INVITACIONES
+
+           Esta es la de la Etapa 2.
+           Explica que un robot lo pueden ver varias personas
+           con un código de invitación.
+      -->
+      <div class="col-md-4">
+        <!-- border-primary = borde azul para que resalte que es nueva -->
+        <div class="card h-100 shadow-sm border-primary"><div class="card-body">
+          <h5 class="card-title">🤖 Mis Robots + Invitaciones</h5>
+          <p class="card-text">
+            Un mismo Protud lo ven varias personas.
+            El dueño crea un código tipo <strong>PROTUD-XXXX</strong> y
+            los demás se unen solos pegándolo en Mis Robots.
+          </p>
+          <!-- Si estás logueado, botón para ir. Si no, botón para loguearte -->
+          {% if session.get('usuario') %}
+            <a href="{{ url_for('mis_robots') }}" class="btn btn-primary btn-sm">Ir a Mis Robots</a>
+          {% else %}
+            <a href="{{ url_for('login_google') }}" class="btn btn-primary btn-sm">Iniciar sesión para unirme</a>
+          {% endif %}
+          <span class="badge bg-success ms-1">Nuevo</span>
+        </div></div>
+      </div>
+
+      <!-- TARJETA 8: CHAT EN VIVO -->
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm"><div class="card-body">
+          <h5 class="card-title">💬 Chat en vivo</h5>
+          <p class="card-text">Hablá con tu equipo por cada robot, sin recargar la página. Se actualiza cada 2 segundos.</p>
+          {% if session.get('usuario') %}
+            <a href="{{ url_for('chat') }}" class="btn btn-outline-dark btn-sm">Abrir chat</a>
+          {% else %}
+            <a href="{{ url_for('login_google') }}" class="btn btn-outline-dark btn-sm">Iniciar sesión para chatear</a>
+          {% endif %}
+          <span class="badge bg-success ms-1">Disponible</span>
+        </div></div>
+      </div>
+
+      <!-- TARJETA 9: CÓDIGOS QUE VENCEN -->
+      <div class="col-md-4">
+        <div class="card h-100 shadow-sm"><div class="card-body">
+          <h5 class="card-title">🔗 Códigos que vencen</h5>
+          <p class="card-text">Cada código dura 24 horas y se puede usar hasta 5 veces. El dueño lo puede revocar cuando quiera.</p>
+          <span class="badge bg-success">Disponible</span>
+        </div></div>
+      </div>
+
+    </div>
+
+    <!-- =======================================================
+         3B. ¿CÓMO ME UNO A UN ROBOT? - NUEVO, ETAPA 2
+
+         id="unirse" = para que el botón "Unirme con código" de arriba
+         baje hasta acá cuando hacés clic (href="#unirse")
+    -->
+    <div id="unirse" class="card mt-5 shadow-sm">
+      <div class="card-body p-4">
+        <!-- Título de la sección -->
+        <h3 class="h5 mb-3">🔗 ¿Cómo me uno a un robot?</h3>
+
+        <!-- 3 pasos en 3 columnas -->
+        <div class="row g-3 text-center">
+
+          <!-- PASO 1 -->
+          <div class="col-md-4">
+            <!-- fs-3 = letra grande para el número -->
+            <div class="fs-3">1️⃣</div>
+            <strong>Iniciá sesión</strong>
+            <p class="text-muted small mb-0">
+              Entrá con tu cuenta de Google. No hace falta crear otra contraseña.
+            </p>
+          </div>
+
+          <!-- PASO 2 -->
+          <div class="col-md-4">
+            <div class="fs-3">2️⃣</div>
+            <strong>Pedí el código</strong>
+            <p class="text-muted small mb-0">
+              El dueño del robot crea un código en Mis Robots y te lo pasa por WhatsApp. Ej: <code>PROTUD-K7Q2</code>
+            </p>
+          </div>
+
+          <!-- PASO 3 -->
+          <div class="col-md-4">
+            <div class="fs-3">3️⃣</div>
+            <strong>Pegalo y listo</strong>
+            <p class="text-muted small mb-0">
+              Pegalo en Mis Robots y ya ves su chat, sus alertas y sus fotos.
+            </p>
+          </div>
+        </div>
+
+        <!-- Botón final de la sección -->
+        <div class="text-center mt-4">
+          {% if session.get('usuario') %}
+            <a href="{{ url_for('mis_robots') }}" class="btn btn-primary">Ir a Mis Robots</a>
+          {% else %}
+            <a href="{{ url_for('login_google') }}" class="btn btn-primary">Iniciar sesión con Google</a>
+          {% endif %}
+        </div>
+      </div>
     </div>
   </main>
 
-  <!-- PIE DE PÁGINA -->
+  <!-- =======================================================
+       PIE DE PÁGINA (footer)
+  -->
+  <!-- bg-dark = fondo negro, text-light = letras claras -->
+  <!-- pt-5 = espacio arriba, pb-3 = espacio abajo, mt-5 = margen arriba -->
   <footer class="bg-dark text-light pt-5 pb-3 mt-5">
     <div class="container">
       <div class="row">
 
         <!-- Columna 1: qué es Protud -->
+        <!-- col-md-4 = 1/3 del ancho en compu -->
+        <!-- mb-4 = margen abajo -->
         <div class="col-md-4 mb-4">
           <h5>Protud</h5>
           <p class="text-secondary">
@@ -104,9 +332,14 @@
         <!-- Columna 2: navegación -->
         <div class="col-md-4 mb-4">
           <h5>Navegación</h5>
+          <!-- list-unstyled = lista sin puntitos -->
           <ul class="list-unstyled">
             <li><a href="/" class="text-secondary text-decoration-none">Inicio</a></li>
             <li><a href="/alertas" class="text-secondary text-decoration-none">Alertas</a></li>
+            <!-- NUEVO: links a Mis Robots, Chat y Panel -->
+            <li><a href="{{ url_for('mis_robots') }}" class="text-secondary text-decoration-none">Mis Robots</a></li>
+            <li><a href="{{ url_for('chat') }}" class="text-secondary text-decoration-none">Chat</a></li>
+            <li><a href="{{ url_for('panel') }}" class="text-secondary text-decoration-none">Panel</a></li>
             <li><a href="{{ url_for('login_google') }}" class="text-secondary text-decoration-none">Iniciar sesión</a></li>
             <li><a href="#" class="text-secondary text-decoration-none">Documentación</a></li>
             <li><a href="#" class="text-secondary text-decoration-none">Política de privacidad</a></li>
@@ -117,7 +350,9 @@
         <div class="col-md-4 mb-4">
           <h5>Contacto</h5>
           <ul class="list-unstyled">
+            <!-- mailto: = abre el programa de correo -->
             <li><a href="mailto:CORREO_DE_PROTUD" class="text-secondary text-decoration-none">Correo</a></li>
+            <!-- target="_blank" = abre en pestaña nueva -->
             <li><a href="https://www.instagram.com/protud_" target="_blank" class="text-secondary text-decoration-none">Instagram</a></li>
             <li><a href="https://github.com/ariell0900/protud-project" target="_blank" class="text-secondary text-decoration-none">GitHub</a></li>
           </ul>
@@ -125,9 +360,13 @@
 
       </div>
 
+      <!-- Línea divisoria -->
       <hr class="border-secondary">
 
       <!-- Créditos -->
+      <!-- d-flex = en fila, flex-column = en celu en columna -->
+      <!-- justify-content-between = uno a cada lado -->
+      <!-- small = letra chiquita -->
       <div class="d-flex flex-column flex-md-row justify-content-between text-secondary small">
         <span>Desarrollo web: Ariel Alfonso · Proyecto: Equipo Protud</span>
         <span>Última actualización: octubre 2026</span>
@@ -135,6 +374,7 @@
     </div>
   </footer>
 
+  <!-- Bootstrap JS: para que anden los menús desplegables, etc. -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
