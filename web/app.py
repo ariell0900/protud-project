@@ -81,6 +81,18 @@ from telegram_service import (
 )
 # telegram_service = archivo nuestro que manda mensajes a Telegram
 
+# ---------------------------------------------------------------
+# NUEVO - BOT POR WEBHOOK (OPCIÓN 1 GRATIS)
+# ---------------------------------------------------------------
+# Antes el bot corría aparte con bot.py y polling.
+# Eso en Render es pago (Background Worker).
+# Ahora el bot vive adentro de esta misma página.
+# Telegram le manda los mensajes a /webhook y acá los atendemos.
+# Así no pagamos nada extra y anda aunque tu compu esté apagada.
+import requests
+# requests = para mandar mensajes de vuelta a Telegram
+# (ej: responder "¡Listo! Ya estás suscripto")
+
 # ===============================================================
 # CONFIGURACIÓN INICIAL
 # ===============================================================
@@ -2155,6 +2167,104 @@ def logout():
     return redirect(
         url_for("inicio")
     )
+
+# ===============================================================
+# WEBHOOK DE TELEGRAM - /webhook
+# ===============================================================
+# ¿Qué es un webhook?
+# En vez de que nuestro bot pregunte cada 2 segundos
+# "¿hay mensajes nuevos?", Telegram NOS AVISA cuando llega uno.
+# Telegram hace POST a https://tu-pagina.onrender.com/webhook
+# con el mensaje, y acá lo procesamos.
+#
+# ¿Por qué acá y no en bot.py?
+# Porque así usamos el mismo Web Service gratis de Render.
+# No necesitamos un Background Worker pago.
+# Y guarda en la MISMA base de Render, no en la de tu compu.
+
+# Leemos el token de las variables de entorno de Render.
+# En Render tiene que estar: TELEGRAM_BOT_TOKEN
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+# Armamos la URL base de la API de Telegram con ese token
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
+
+def mandar_mensaje_telegram(chat_id, texto):
+    """
+    Manda un mensaje de texto a un chat de Telegram.
+    chat_id = a quién (el número que Telegram le da a cada persona)
+    texto = qué le decimos
+    """
+    # Si no hay token, no podemos mandar nada, salimos sin romper
+    if not TELEGRAM_BOT_TOKEN:
+        print("Falta TELEGRAM_BOT_TOKEN en Render, no puedo mandar mensaje")
+        return
+    try:
+        # POST a sendMessage = Telegram manda el mensaje
+        requests.post(
+            f"{TELEGRAM_API_URL}/sendMessage",
+            json={"chat_id": chat_id, "text": texto},
+            timeout=10,  # Si en 10 seg no responde, cortamos
+        )
+    except Exception as e:
+        # Si falla el envío, lo dejamos en los logs pero no rompemos la página
+        print(f"Error mandando telegram: {e}")
+
+@app.route("/webhook", methods=["POST"])
+def webhook_telegram():
+    """
+    Recibe los mensajes que Telegram nos manda.
+    Cuando alguien manda /start, lo suscribimos.
+    """
+    try:
+        # request.get_json() = lo que Telegram nos mandó en JSON
+        datos = request.get_json() or {}
+        # message = el mensaje (puede no venir si es otro tipo de evento)
+        mensaje = datos.get("message", {})
+        # text = lo que escribió, ej: "/start"
+        texto = (mensaje.get("text") or "").strip()
+        # chat = a quién le tenemos que responder
+        chat = mensaje.get("chat", {})
+        # chat_id = el ID único de esa persona en Telegram
+        chat_id = chat.get("id")
+        # Nombre para guardarlo lindo en la base
+        nombre = f"{chat.get('first_name', '')} {chat.get('last_name', '')}".strip()
+        # Si no tiene nombre, le ponemos el username o "Sin nombre"
+        if not nombre:
+            nombre = chat.get("username", "Sin nombre")
+
+        # Solo nos interesa /start y que venga con chat_id
+        if texto == "/start" and chat_id:
+            # Guardamos en la base de Render con conectar_db()
+            # Esta es la misma función que usa toda la app, por eso
+            # guarda en la misma base que ve la página.
+            with conectar_db() as conexion:
+                with conexion.cursor() as cursor:
+                    # INSERT ... ON CONFLICT = si ya existe ese chat_id,
+                    # no crea otro, solo lo reactiva y actualiza el nombre.
+                    # Así Braian puede mandar /start 10 veces y no se duplica.
+                    cursor.execute(
+                        """
+                        INSERT INTO suscriptores_telegram (chat_id, nombre, activo)
+                        VALUES (%s, %s, TRUE)
+                        ON CONFLICT (chat_id)
+                        DO UPDATE SET nombre = EXCLUDED.nombre, activo = TRUE
+                        """,
+                        (int(chat_id), nombre),  # int() porque en la base chat_id es bigint, no text
+                    )
+            print(f"GUARDADO WEBHOOK: {chat_id} - {nombre}")
+            # Le respondemos que ya quedó suscripto
+            mandar_mensaje_telegram(
+                chat_id,
+                "✅ ¡Listo! Ya estás suscripto a las alertas de PROTUD. Vas a recibir alertas solo cuando tus robots se caigan."
+            )
+
+        # Siempre devolvemos "ok" para que Telegram no reintente
+        return "ok", 200
+    except Exception as e:
+        # Si algo falla, lo mostramos en los logs de Render
+        # y igual devolvemos "ok" para que Telegram no nos spamee
+        print(f"Error webhook: {e}")
+        return "ok", 200
 
 # ===============================================================
 # INICIAR SERVIDOR
