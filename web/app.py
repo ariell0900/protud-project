@@ -44,6 +44,8 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 # Crear la aplicación Flask
 app = Flask(__name__)
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Clave secreta: Flask la usa para firmar la sesión y que nadie la falsifique
 app.secret_key = os.getenv("SECRET_KEY")
