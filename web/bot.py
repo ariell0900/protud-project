@@ -1,137 +1,177 @@
-# bot.py - Bot de Telegram de PROTUD
-# Este archivo es el que "escucha" todo el tiempo.
-# Cuando alguien le manda /start al bot, lo guarda en la base
-# para que después le lleguen las alertas.
-# Si alguien manda /stop, lo da de baja.
-# Si alguien manda /alerta, manda una alerta de prueba a todos.
+# bot.py - Bot de Telegram de PROTUD v2
+# Ahora con espacios privados, código de 24hs y aprobación del admin.
+import os
+import random
+import string
+from pathlib import Path
+from datetime import datetime, timedelta, timezone
+import psycopg
+import requests
+from dotenv import load_dotenv
 
-# ---------------------------------------------------------------
-# Librerías
-# ---------------------------------------------------------------
-import os                      # Leer variables del .env (el TOKEN del bot)
-from pathlib import Path       # Armar rutas que funcionan en Windows y Linux
-import psycopg                 # Conectar con PostgreSQL
-import requests                # Hablar con la API de Telegram por internet
-from dotenv import load_dotenv # Cargar el archivo .env con las claves
-
-# Cargar las variables del .env que está en la misma carpeta
 load_dotenv(Path(__file__).resolve().parent / ".env")
-
-# TOKEN: la clave secreta del bot que nos dio @BotFather.
-# Nunca se escribe acá, se lee del .env para no compartirla.
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-
-# API: la dirección base para hablar con Telegram.
-# Todos los mensajes pasan por acá.
 API = f"https://api.telegram.org/bot{TOKEN}"
 
-# ---------------------------------------------------------------
-# Conexión a la base de datos
-# ---------------------------------------------------------------
 def conectar_db():
-    """Devuelve una conexión abierta a PostgreSQL."""
-    # En la nube (Render) usa DATABASE_URL
     url = os.getenv("DATABASE_URL")
     if url:
         return psycopg.connect(url, connect_timeout=5)
-    # En tu compu usa los datos del .env
     return psycopg.connect(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
-        dbname=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        connect_timeout=5
+        host=os.getenv("DB_HOST"), port=os.getenv("DB_PORT"),
+        dbname=os.getenv("DB_NAME"), user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"), connect_timeout=5
     )
 
-# ---------------------------------------------------------------
-# Guardar suscriptor
-# ---------------------------------------------------------------
-def guardar_suscriptor(chat_id, nombre, username):
-    """Guarda a una persona que puso /start, para mandarle alertas después."""
-    # chat_id: es el número único que Telegram le da a cada chat.
-    # Sin este número no le podemos mandar mensajes a nadie.
-    with conectar_db() as conexion:
-        with conexion.cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO suscriptores_telegram (chat_id, nombre, username)
-                VALUES (%s, %s, %s)
-                -- Si esa persona ya estaba guardada, no la duplicamos,
-                -- solo la volvemos a activar y actualizamos su nombre.
-                ON CONFLICT (chat_id) DO UPDATE SET activo = TRUE, nombre = EXCLUDED.nombre
-            """, (chat_id, nombre, username))
+def mandar(chat_id, texto, botones=None):
+    # botones: lista de botones inline de Telegram
+    data = {"chat_id": chat_id, "text": texto}
+    if botones:
+        data["reply_markup"] = {"inline_keyboard": botones}
+    requests.post(f"{API}/sendMessage", json=data, timeout=10)
 
-# ---------------------------------------------------------------
-# Mandar un mensaje simple
-# ---------------------------------------------------------------
-def mandar(chat_id, texto):
-    """Manda un mensaje de texto a un solo chat_id."""
-    # sendMessage es el comando de Telegram para mandar texto.
-    requests.post(
-        f"{API}/sendMessage",
-        json={"chat_id": chat_id, "text": texto},
-        timeout=10
-    )
+def generar_codigo():
+    return ''.join(random.choices(string.digits, k=6))
 
-# ---------------------------------------------------------------
-# Escuchar mensajes (bucle principal)
-# ---------------------------------------------------------------
+def generar_id_robot():
+    return "PROTUD-" + ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+# --- Memoria temporal: en qué paso está cada usuario ---
+# Ej: estados[chat_id] = "esperando_nombre_espacio" o "esperando_codigo"
+estados = {}
+
 def escuchar():
-    """Queda esperando mensajes nuevos todo el tiempo."""
-    # offset: le dice a Telegram "ya leí hasta este mensaje",
-    # así no nos vuelve a mandar los mismos de nuevo.
     offset = 0
-    print("Bot PROTUD escuchando... mandale /start en Telegram")
-
-    # Bucle infinito: el bot nunca se apaga solo, siempre está atento.
+    print("Bot PROTUD v2 escuchando... espacios + códigos + admin")
     while True:
-        # getUpdates: le preguntamos a Telegram "¿hay mensajes nuevos?"
-        # timeout=30 significa que esperamos hasta 30 segundos la respuesta.
-        r = requests.get(
-            f"{API}/getUpdates",
-            params={"offset": offset, "timeout": 30},
-            timeout=35
-        ).json()
+        try:
+            r = requests.get(f"{API}/getUpdates", params={"offset": offset, "timeout": 30}, timeout=35).json()
+        except:
+            continue
 
-        # Recorremos cada mensaje nuevo que llegó.
         for update in r.get("result", []):
-            # Avanzamos el offset para no leer este mensaje otra vez.
             offset = update["update_id"] + 1
 
-            # Nos quedamos solo con los mensajes de texto.
-            # Si no hay "message" (ej: es un sticker), lo saltamos.
+            # 1. BOTONES que apretó alguien (Aceptar / Rechazar / Crear / Unirse)
+            if "callback_query" in update:
+                cb = update["callback_query"]
+                chat_id = cb["from"]["id"]
+                data = cb.get("data", "")
+                # Le sacamos el "cargando..." al botón
+                requests.post(f"{API}/answerCallbackQuery", json={"callback_query_id": cb["id"]}, timeout=10)
+
+                if data == "crear":
+                    estados[chat_id] = "esperando_nombre_espacio"
+                    mandar(chat_id, "¿Cómo se llama tu espacio? Ej: Escuela 1")
+                elif data == "unirse":
+                    estados[chat_id] = "esperando_codigo"
+                    mandar(chat_id, "Pasame el código de 6 números que te compartió tu admin.")
+                elif data.startswith("aceptar_"):
+                    pedido_id = int(data.split("_")[1])
+                    aceptar_pedido(pedido_id)
+                elif data.startswith("rechazar_"):
+                    pedido_id = int(data.split("_")[1])
+                    rechazar_pedido(pedido_id)
+                continue
+
             msg = update.get("message")
             if not msg:
                 continue
 
-            # Sacamos los datos de quien escribió.
-            chat_id = msg["chat"]["id"]  # A quién hay que responderle
-            texto = msg.get("text", "")  # Qué escribió (/start, /stop, etc.)
+            chat_id = msg["chat"]["id"]
+            texto = msg.get("text", "").strip()
             nombre = msg["from"].get("first_name", "")
             username = msg["from"].get("username", "")
 
-            # Si puso /start: lo guardamos y le avisamos que ya está suscripto.
+            # /start: menú principal
             if texto == "/start":
-                guardar_suscriptor(chat_id, nombre, username)
-                mandar(chat_id, "✅ ¡Listo! Ya estás suscripto a las alertas de PROTUD.\nCuando el robot detecte algo, te llega acá.")
+                estados.pop(chat_id, None)
+                mandar(chat_id,
+                    "👋 Bienvenido a PROTUD\n\n¿Qué querés hacer?",
+                    botones=[
+                        [{"text": "➕ Crear espacio nuevo", "callback_data": "crear"}],
+                        [{"text": "🔑 Unirme con código", "callback_data": "unirse"}]
+                    ])
+                continue
 
-            # Si puso /stop: lo marcamos como inactivo, no le llegan más alertas.
-            # No lo borramos (baja lógica), por si después quiere volver con /start.
-            elif texto == "/stop":
-                with conectar_db() as conexion:
-                    with conexion.cursor() as cursor:
-                        cursor.execute(
-                            "UPDATE suscriptores_telegram SET activo = FALSE WHERE chat_id = %s",
-                            (chat_id,)
-                        )
-                mandar(chat_id, "Te diste de baja de las alertas de PROTUD.")
+            # Si está esperando el nombre del espacio -> lo crea
+            if estados.get(chat_id) == "esperando_nombre_espacio":
+                crear_espacio(chat_id, nombre, username, texto)
+                estados.pop(chat_id, None)
+                continue
 
-            # Si puso /alerta: manda una alerta de prueba a TODOS los suscriptos.
-            elif texto == "/alerta":
-                from telegram_service import enviar_alerta_telegram
-                enviar_alerta_telegram("Mini Protud", "Prueba de alerta", "Escuela")
-                mandar(chat_id, "Prueba enviada a todos los suscriptos.")
+            # Si está esperando el código -> intenta unirse
+            if estados.get(chat_id) == "esperando_codigo":
+                intentar_unirse(chat_id, nombre, username, texto)
+                estados.pop(chat_id, None)
+                continue
 
-# Si corremos este archivo directo (python bot.py), empieza a escuchar.
+            if texto == "/stop":
+                with conectar_db() as c:
+                    with c.cursor() as cur:
+                        cur.execute("UPDATE miembros_espacio SET activo=FALSE WHERE chat_id=%s", (chat_id,))
+                mandar(chat_id, "Te diste de baja de las alertas.")
+                continue
+
+def crear_espacio(chat_id, nombre, username, nombre_espacio):
+    codigo = generar_codigo()
+    id_robot = generar_id_robot()
+    vence = datetime.now(timezone.utc) + timedelta(hours=24)
+    with conectar_db() as c:
+        with c.cursor() as cur:
+            cur.execute("INSERT INTO espacios (nombre, admin_chat_id) VALUES (%s,%s) RETURNING id", (nombre_espacio, chat_id))
+            espacio_id = cur.fetchone()[0]
+            cur.execute("INSERT INTO robots (espacio_id, codigo_robot, nombre) VALUES (%s,%s,%s)", (espacio_id, id_robot, f"Robot de {nombre_espacio}"))
+            cur.execute("INSERT INTO miembros_espacio (espacio_id, chat_id, nombre, username, rol) VALUES (%s,%s,%s,%s,'admin')", (espacio_id, chat_id, nombre, username))
+            cur.execute("INSERT INTO codigos_invitacion (espacio_id, codigo, vence_en) VALUES (%s,%s,%s)", (espacio_id, codigo, vence))
+    mandar(chat_id, f"✅ ¡Espacio creado!\n\n🏫 Espacio: {nombre_espacio}\n🤖 Robot ID: {id_robot} (no cambia nunca)\n🔑 Tu código para invitar (dura 24hs): {codigo}\n\nCompartí ese código con tus compañeros. Cuando quieran entrar, te voy a avisar para que los aceptes o rechaces.")
+
+def intentar_unirse(chat_id, nombre, username, codigo):
+    with conectar_db() as c:
+        with c.cursor() as cur:
+            cur.execute("""
+                SELECT e.id, e.nombre, e.admin_chat_id FROM codigos_invitacion ci
+                JOIN espacios e ON e.id = ci.espacio_id
+                WHERE ci.codigo=%s AND ci.vence_en > NOW() AND ci.usado=FALSE
+            """, (codigo,))
+            fila = cur.fetchone()
+            if not fila:
+                mandar(chat_id, "❌ Ese código no existe o ya venció. Pedile uno nuevo a tu admin.")
+                return
+            espacio_id, nombre_espacio, admin_chat_id = fila
+            # Guardamos el pedido pendiente
+            cur.execute("INSERT INTO pedidos_union (espacio_id, chat_id, nombre, username) VALUES (%s,%s,%s,%s) RETURNING id", (espacio_id, chat_id, nombre, username))
+            pedido_id = cur.fetchone()[0]
+    mandar(chat_id, f"⏳ Pedido enviado a {nombre_espacio}. Esperá que el admin te acepte.")
+    # Aviso al admin con botones
+    mandar(admin_chat_id,
+        f"🔔 Alguien quiere unirse a tu espacio {nombre_espacio}\n\n👤 {nombre} (@{username})\n\n¿Qué hacés?",
+        botones=[
+            [{"text": "✅ Aceptar", "callback_data": f"aceptar_{pedido_id}"}, {"text": "❌ Rechazar", "callback_data": f"rechazar_{pedido_id}"}]
+        ])
+
+def aceptar_pedido(pedido_id):
+    with conectar_db() as c:
+        with c.cursor() as cur:
+            cur.execute("SELECT espacio_id, chat_id, nombre, username FROM pedidos_union WHERE id=%s AND estado='pendiente'", (pedido_id,))
+            p = cur.fetchone()
+            if not p: return
+            espacio_id, chat_id, nombre, username = p
+            cur.execute("UPDATE pedidos_union SET estado='aceptado' WHERE id=%s", (pedido_id,))
+            cur.execute("INSERT INTO miembros_espacio (espacio_id, chat_id, nombre, username, rol) VALUES (%s,%s,%s,%s,'miembro') ON CONFLICT (espacio_id, chat_id) DO UPDATE SET activo=TRUE", (espacio_id, chat_id, nombre, username))
+            cur.execute("SELECT nombre FROM espacios WHERE id=%s", (espacio_id,))
+            nombre_espacio = cur.fetchone()[0]
+    mandar(chat_id, f"✅ ¡Aceptado! Ya estás en {nombre_espacio}. Ahora te van a llegar sus alertas acá y podés entrar al chat en la web.")
+    mandar(chat_id, "Ya podés entrar a la web con tu cuenta y vas a ver el chat de tu espacio.")
+
+def rechazar_pedido(pedido_id):
+    with conectar_db() as c:
+        with c.cursor() as cur:
+            cur.execute("SELECT chat_id FROM pedidos_union WHERE id=%s", (pedido_id,))
+            fila = cur.fetchone()
+            if not fila: return
+            cur.execute("UPDATE pedidos_union SET estado='rechazado' WHERE id=%s", (pedido_id,))
+    mandar(fila[0], "❌ El admin rechazó tu pedido para unirte al espacio.")
+
 if __name__ == "__main__":
     escuchar()
