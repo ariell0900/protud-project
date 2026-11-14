@@ -556,18 +556,26 @@ def callback():
     try:
         with conectar_db() as conexion:
             with conexion.cursor() as cursor:
-                # Crear usuario si no existe. Los usuarios nuevos comienzan como operador.
-                # ON CONFLICT (email) = si el email ya existe, no crea otro, solo actualiza el nombre.
-                cursor.execute(
-                    """
-                    INSERT INTO usuarios (nombre, email, rol)
-                    VALUES (%s, %s, 'operador')
-                    ON CONFLICT (email) DO UPDATE SET nombre = EXCLUDED.nombre
-                    RETURNING id, rol, activo
-                    """,
-                    (datos["name"], datos["email"]),
-                )
-                (usuario_id, rol, activo) = cursor.fetchone()
+                # CORRECCIÓN: Antes usábamos ON CONFLICT (email) acá también.
+                # Si en tu base email no tiene UNIQUE, eso rompía el login.
+                # Ahora hacemos: 1. Buscar por email, 2. Si existe, actualizar nombre, 3. Si no existe, crear.
+                cursor.execute("SELECT id, rol, activo FROM usuarios WHERE email = %s", (datos["email"],))
+                fila = cursor.fetchone()
+                if fila:
+                    # Ya existe -> actualizamos el nombre por si cambió en Google
+                    usuario_id, rol, activo = fila
+                    cursor.execute("UPDATE usuarios SET nombre = %s WHERE id = %s", (datos["name"], usuario_id))
+                else:
+                    # No existe -> lo creamos como operador
+                    cursor.execute(
+                        """
+                        INSERT INTO usuarios (nombre, email, rol)
+                        VALUES (%s, %s, 'operador')
+                        RETURNING id, rol, activo
+                        """,
+                        (datos["name"], datos["email"]),
+                    )
+                    (usuario_id, rol, activo) = cursor.fetchone()
     except psycopg.Error:
         app.logger.exception("Error al guardar el usuario")
         return ("No se pudo iniciar sesión.", 500)
@@ -1111,6 +1119,16 @@ def menu_principal():
         ]
     }
 
+# ===============================================================
+# CORRECCIÓN PRINCIPAL - get_o_crear_usuario_telegram
+# ===============================================================
+# ANTES: usaba INSERT ... ON CONFLICT (email)
+# PROBLEMA: Si la columna email NO tiene UNIQUE en la base, Postgres tira error
+# y por eso Telegram decía "No pude cargar tus espacios".
+# AHORA: hacemos 1. Buscar, 2. Si existe devolver id, 3. Si no existe crear.
+# Así NO depende de que haya UNIQUE. Es más seguro y anda siempre.
+# ===============================================================
+
 def get_o_crear_usuario_telegram(chat_id, nombre):
     """
     Busca o crea el usuario de Telegram en la tabla usuarios.
@@ -1126,12 +1144,17 @@ def get_o_crear_usuario_telegram(chat_id, nombre):
     email = f"telegram_{chat_id}@telegram.local"
     with conectar_db() as conexion:
         with conexion.cursor() as cursor:
-            # INSERT ... ON CONFLICT = si ya existe ese email, no crea otro, solo actualiza el nombre y devuelve el id
+            # PASO 1: ¿Ya existe este usuario de Telegram?
+            # Buscamos por email. Si lo encontramos, ya tenemos su id.
+            cursor.execute("SELECT id FROM usuarios WHERE email = %s", (email,))
+            fila = cursor.fetchone()
+            if fila:
+                # Ya existe -> devolvemos su id, no creamos otro
+                return fila[0]
+            # PASO 2: No existe -> lo creamos como operador
+            # RETURNING id = la base nos devuelve el id que le puso
             cursor.execute(
-                """INSERT INTO usuarios (nombre, email, rol)
-                   VALUES (%s, %s, 'operador')
-                   ON CONFLICT (email) DO UPDATE SET nombre = EXCLUDED.nombre
-                   RETURNING id""",
+                "INSERT INTO usuarios (nombre, email, rol) VALUES (%s, %s, 'operador') RETURNING id",
                 (nombre, email),
             )
             return cursor.fetchone()[0]
@@ -1172,7 +1195,7 @@ def webhook_telegram():
             # Botón: Mis espacios -> buscamos en robot_usuarios qué robots tiene
             elif data == "mis_espacios":
                 try:
-                    # Buscamos su usuario de Telegram
+                    # Buscamos su usuario de Telegram (con la función corregida, ya no rompe)
                     usuario_id = get_o_crear_usuario_telegram(chat_id, "Telegram")
                     with conectar_db() as conexion:
                         with conexion.cursor() as cursor:
@@ -1211,16 +1234,23 @@ def webhook_telegram():
         # --- /start -> MENÚ NUEVO, ya no dice solo "Ya estás suscripto" ---
         if texto == "/start":
             # Guardamos en suscriptores_telegram para las alertas
-            # INSERT ... ON CONFLICT = si ya existe ese chat_id, no crea otro, solo lo reactiva y actualiza el nombre.
-            # Así podés mandar /start 10 veces y no se duplica.
+            # CORRECCIÓN: Antes usábamos ON CONFLICT (chat_id) acá también.
+            # Ahora hacemos: 1. Buscar por chat_id, 2. Si existe actualizar, 3. Si no existe crear.
+            # Así no depende de que chat_id tenga UNIQUE.
             with conectar_db() as conexion:
                 with conexion.cursor() as cursor:
-                    cursor.execute(
-                        """INSERT INTO suscriptores_telegram (chat_id, nombre, activo)
-                           VALUES (%s, %s, TRUE)
-                           ON CONFLICT (chat_id) DO UPDATE SET nombre = EXCLUDED.nombre, activo = TRUE""",
-                        (int(chat_id), nombre),  # int() porque en la base chat_id es bigint, no text
-                    )
+                    cursor.execute("SELECT id FROM suscriptores_telegram WHERE chat_id = %s", (int(chat_id),))
+                    fila_existe = cursor.fetchone()
+                    if fila_existe:
+                        # Ya existe -> lo reactivamos y actualizamos nombre
+                        cursor.execute("UPDATE suscriptores_telegram SET nombre = %s, activo = TRUE WHERE chat_id = %s", (nombre, int(chat_id)))
+                    else:
+                        # No existe -> lo creamos
+                        cursor.execute(
+                            """INSERT INTO suscriptores_telegram (chat_id, nombre, activo)
+                               VALUES (%s, %s, TRUE)""",
+                            (int(chat_id), nombre),  # int() porque en la base chat_id es bigint, no text
+                        )
             print(f"GUARDADO WEBHOOK: {chat_id} - {nombre}")
             # Le respondemos con el menú nuevo
             mandar_mensaje_telegram(chat_id, "👋 Bienvenido a PROTUD\n\n¿Qué querés hacer?", menu_principal())
@@ -1240,8 +1270,12 @@ def webhook_telegram():
                         cursor.execute("INSERT INTO robots (nombre) VALUES (%s) RETURNING id", (nombre_espacio,))
                         nuevo_id = cursor.fetchone()[0]
                         # Nos unimos automáticamente como dueños de ese espacio
-                        # ON CONFLICT DO NOTHING = si ya está unido, no da error
-                        cursor.execute("INSERT INTO robot_usuarios (robot_id, usuario_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (nuevo_id, usuario_id))
+                        # CORRECCIÓN: Antes era ON CONFLICT DO NOTHING.
+                        # Ahora primero preguntamos si ya está unido, y solo si NO está, lo insertamos.
+                        # Así no depende de que haya UNIQUE en (robot_id, usuario_id).
+                        cursor.execute("SELECT 1 FROM robot_usuarios WHERE robot_id = %s AND usuario_id = %s", (nuevo_id, usuario_id))
+                        if not cursor.fetchone():
+                            cursor.execute("INSERT INTO robot_usuarios (robot_id, usuario_id) VALUES (%s, %s)", (nuevo_id, usuario_id))
                 mandar_mensaje_telegram(chat_id, f"✅ Espacio creado: {nombre_espacio}\n\nAndá a la web a /mis-robots para generar tu código y compartirlo.", menu_principal())
             except Exception as e:
                 print(f"Error crear: {e}")
@@ -1270,7 +1304,10 @@ def webhook_telegram():
                         cursor.execute("SELECT nombre FROM robots WHERE id = %s", (robot_id,))
                         nombre_robot = cursor.fetchone()[0]
                         # Lo unimos: creamos fila en robot_usuarios
-                        cursor.execute("INSERT INTO robot_usuarios (robot_id, usuario_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (robot_id, usuario_id))
+                        # CORRECCIÓN: Igual que en /crear, primero preguntamos si ya está, si no está lo insertamos.
+                        cursor.execute("SELECT 1 FROM robot_usuarios WHERE robot_id = %s AND usuario_id = %s", (robot_id, usuario_id))
+                        if not cursor.fetchone():
+                            cursor.execute("INSERT INTO robot_usuarios (robot_id, usuario_id) VALUES (%s, %s)", (robot_id, usuario_id))
                         # Sumamos 1 uso al código, para que cuando llegue a 5 ya no sirva
                         cursor.execute("UPDATE invitaciones SET usos_actuales = usos_actuales + 1 WHERE id = %s", (inv_id,))
                 mandar_mensaje_telegram(chat_id, f"✅ ¡Te uniste a {nombre_robot}!", menu_principal())
