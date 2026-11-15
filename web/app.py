@@ -255,12 +255,10 @@ def usuario_puede_ver_robot(usuario_id, rol, robot_id):
 # PÁGINA PRINCIPAL
 # ===============================================================
 
-@app.route("/")
+   @app.route("/")
 def inicio():
     """Página pública principal. Mostrar la portada no necesita login."""
-    if "usuario" in session:
-        return redirect("/mis-robots")
-    return render_template("index.html")
+    return render_template("index.html", usuario=session.get("usuario"))
 
 # ===============================================================
 # PANEL
