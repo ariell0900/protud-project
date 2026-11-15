@@ -1,58 +1,80 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mis Robots</title>
-<!-- Bootstrap: solo para que se vea lindo, con botones y tarjetas -->
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
-<body>
-<div class="container mt-4">
-  <!-- Encabezado de la página -->
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Mis Robots</h2>
-    <div>
-      <!-- Botón para volver a la home -->
-      <a href="/" class="btn btn-secondary">Volver</a>
-      <!-- Botón para crear un robot nuevo -->
-      <a href="/nuevo" class="btn btn-primary">+ Nuevo Robot</a>
-    </div>
-  </div>
+{% extends "base.html" %}
+{% block content %}
 
-  <!-- Si la base de datos trae robots, entramos acá -->
-  {% if robots %}
-    <div class="row">
-    <!-- Repetimos una tarjeta por cada robot que venga de la base -->
-    {% for robot in robots %}
-      <div class="col-md-4 mb-3">
-        <div class="card">
-          <div class="card-body">
-            <!-- Nombre del robot. Si no tiene nombre, muestra 'Robot' -->
-            <h5 class="card-title">{{ robot.nombre or robot.name or 'Robot' }}</h5>
-            <p class="card-text">
-              <!-- Mostramos el ID del robot -->
-              ID: {{ robot.id }}<br>
-              <!-- Si tiene estado (activo, etc) lo mostramos -->
-              {% if robot.estado %}Estado: {{ robot.estado }}{% endif %}
-              <!-- Si tiene descripción la mostramos -->
-              {% if robot.descripcion %}{{ robot.descripcion }}{% endif %}
-            </p>
-            <!-- Botón para ver el detalle del robot -->
-            <a href="/robot/{{ robot.id }}" class="btn btn-sm btn-outline-primary">Ver</a>
-            <!-- Botón para ir al control del robot -->
-            <a href="/control/{{ robot.id }}" class="btn btn-sm btn-outline-success">Control</a>
-          </div>
-        </div>
-      </div>
-    {% endfor %}
-    </div>
-  {% else %}
-    <!-- Si NO hay robots, mostramos este cartel avisando -->
-    <div class="alert alert-info">
-      Todavía no tenés robots. Creá el primero con el botón <b>+ Nuevo Robot</b>.
-    </div>
-  {% endif %}
+<!-- TITULO DE LA PAGINA -->
+<h1>Mis Robots</h1>
+<!-- Saludo con el nombre del usuario que está logueado -->
+<p>Hola {{ usuario.nombre }} 👋</p>
+
+<!-- ============================================ -->
+<!-- SECCION 1: UNIRSE CON UN CODIGO            -->
+<!-- Esto es para el operador que recibió un   -->
+<!-- código de un admin y quiere ver un robot  -->
+<!-- ============================================ -->
+<div style="background:#f0f0f0; padding:15px; border-radius:10px; margin-bottom:20px;">
+  <h3>Unirme con un código</h3>
+  <p>Si un admin te pasó un código, ponelo acá:</p>
+  <!-- El form manda el codigo a /mis-robots/unirse -->
+  <!-- Ahi el backend busca el codigo y te une al robot -->
+  <form method="POST" action="/mis-robots/unirse">
+    <!-- Aca el usuario escribe el codigo, ej: PROTUD-1234 -->
+    <input type="text" name="codigo" placeholder="Ej: PROTUD-1234" required style="padding:8px;">
+    <!-- Boton para enviar el form -->
+    <button type="submit" style="padding:8px 15px;">Unirme</button>
+  </form>
 </div>
-</body>
-</html>
+
+<!-- ============================================ -->
+<!-- SECCION 2: LISTA DE MIS ROBOTS             -->
+<!-- Aca aparecen solo los robots a los que     -->
+<!-- ya te uniste. Si no te uniste a ninguno,  -->
+<!-- te muestra un mensaje vacio.               -->
+<!-- ============================================ -->
+<h2>Robots que puedo ver</h2>
+
+<!-- Si la variable robots tiene algo, la recorremos -->
+{% if robots %}
+  <!-- Por cada robot, creamos una tarjetita -->
+  {% for r in robots %}
+  <div style="border:1px solid #ddd; padding:15px; border-radius:10px; margin-bottom:10px;">
+    <!-- Nombre del robot, si no tiene nombre usa el campo 1 de la DB -->
+    <h3>{{ r.nombre or r[1] }}</h3>
+    <!-- ID del robot en la base de datos -->
+    <p>ID: {{ r.id or r[0] }}</p>
+    <!-- Link para entrar a ver las alertas de ese robot -->
+    <a href="/robot?id={{ r.id or r[0] }}">Ver alertas →</a>
+
+    <!-- ======================================== -->
+    <!-- SOLO SI SOS ADMIN: BOTON PARA INVITAR   -->
+    <!-- Crea un codigo nuevo para ese robot    -->
+    <!-- para pasarselo a otro operador         -->
+    <!-- ======================================== -->
+    {% if usuario.rol == 'admin' %}
+    <form method="POST" action="/robots/{{ r.id or r[0] }}/invitar" style="margin-top:10px;">
+      <button type="submit">Crear código para invitar</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+  <!-- Si no tenes robots todavia -->
+  <p>Todavía no estás unido a ningún robot. Pedile un código a un admin.</p>
+{% endif %}
+
+<!-- ============================================ -->
+<!-- SECCION 3: MIS CODIGOS CREADOS             -->
+<!-- Solo aparece si vos como admin ya creaste -->
+<!-- algun codigo de invitacion                 -->
+<!-- ============================================ -->
+{% if invitaciones %}
+<h2>Mis códigos de invitación</h2>
+<!-- Recorremos todos los codigos que creaste -->
+{% for inv in invitaciones %}
+  <div style="background:#eaffea; padding:10px; border-radius:8px; margin-bottom:8px;">
+    <!-- Mostramos el codigo y a que robot pertenece -->
+    Código: <b>{{ inv.codigo or inv[1] }}</b> - Robot: {{ inv.robot_id or inv[2] }}
+  </div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}
