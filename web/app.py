@@ -354,8 +354,9 @@ def usuario_puede_ver_robot(usuario_id, rol, robot_id):
 # PÁGINA PRINCIPAL
 # ===============================================================
 
-@app.route("/")
+   @app.route("/")
 def inicio():
+<<<<<<< HEAD
     """
     Página pública principal.
 
@@ -363,6 +364,10 @@ def inicio():
     """
 
     return render_template("index.html")
+=======
+    """Página pública principal. Mostrar la portada no necesita login."""
+    return render_template("index.html", usuario=session.get("usuario"))
+>>>>>>> 9314311a335a43e3a151b37e349923e0b638e04c
 
 # ===============================================================
 # PANEL
