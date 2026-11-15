@@ -1,80 +1,72 @@
-{% extends "base.html" %}
-{% block content %}
+<!-- PAGINA MIS ROBOTS - VERSION SOLA, SIN BASE.HTML -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Mis Robots - Protud</title>
+</head>
+<body style="font-family:Arial; max-width:800px; margin:20px auto; padding:0 15px;">
 
-<!-- TITULO DE LA PAGINA -->
+<!-- TITULO -->
 <h1>Mis Robots</h1>
-<!-- Saludo con el nombre del usuario que está logueado -->
-<p>Hola {{ usuario.nombre }} 👋</p>
+<!-- Saludamos al usuario. Usamos [1] porque usuario viene como lista: [id, nombre, email, rol] -->
+<p>Hola {{ usuario[1] }} 👋 - Rol: {{ usuario[3] }}</p>
+<a href="/">← Volver al inicio</a>
+<hr>
 
 <!-- ============================================ -->
 <!-- SECCION 1: UNIRSE CON UN CODIGO            -->
-<!-- Esto es para el operador que recibió un   -->
-<!-- código de un admin y quiere ver un robot  -->
+<!-- Para el operador que recibio un codigo    -->
 <!-- ============================================ -->
 <div style="background:#f0f0f0; padding:15px; border-radius:10px; margin-bottom:20px;">
   <h3>Unirme con un código</h3>
   <p>Si un admin te pasó un código, ponelo acá:</p>
-  <!-- El form manda el codigo a /mis-robots/unirse -->
-  <!-- Ahi el backend busca el codigo y te une al robot -->
+  <!-- Manda el codigo al backend para unirse -->
   <form method="POST" action="/mis-robots/unirse">
-    <!-- Aca el usuario escribe el codigo, ej: PROTUD-1234 -->
     <input type="text" name="codigo" placeholder="Ej: PROTUD-1234" required style="padding:8px;">
-    <!-- Boton para enviar el form -->
     <button type="submit" style="padding:8px 15px;">Unirme</button>
   </form>
 </div>
 
 <!-- ============================================ -->
-<!-- SECCION 2: LISTA DE MIS ROBOTS             -->
-<!-- Aca aparecen solo los robots a los que     -->
-<!-- ya te uniste. Si no te uniste a ninguno,  -->
-<!-- te muestra un mensaje vacio.               -->
+<!-- SECCION 2: MIS ROBOTS                      -->
+<!-- Solo aparecen los robots a los que ya    -->
+<!-- te uniste. Si no hay ninguno, avisa.     -->
 <!-- ============================================ -->
 <h2>Robots que puedo ver</h2>
-
-<!-- Si la variable robots tiene algo, la recorremos -->
 {% if robots %}
-  <!-- Por cada robot, creamos una tarjetita -->
   {% for r in robots %}
   <div style="border:1px solid #ddd; padding:15px; border-radius:10px; margin-bottom:10px;">
-    <!-- Nombre del robot, si no tiene nombre usa el campo 1 de la DB -->
-    <h3>{{ r.nombre or r[1] }}</h3>
-    <!-- ID del robot en la base de datos -->
-    <p>ID: {{ r.id or r[0] }}</p>
-    <!-- Link para entrar a ver las alertas de ese robot -->
-    <a href="/robot?id={{ r.id or r[0] }}">Ver alertas →</a>
+    <!-- r[0]=id, r[1]=nombre -->
+    <h3>{{ r[1] }}</h3>
+    <p>ID: {{ r[0] }}</p>
+    <a href="/robot?id={{ r[0] }}">Ver alertas →</a>
 
-    <!-- ======================================== -->
-    <!-- SOLO SI SOS ADMIN: BOTON PARA INVITAR   -->
-    <!-- Crea un codigo nuevo para ese robot    -->
-    <!-- para pasarselo a otro operador         -->
-    <!-- ======================================== -->
-    {% if usuario.rol == 'admin' %}
-    <form method="POST" action="/robots/{{ r.id or r[0] }}/invitar" style="margin-top:10px;">
+    <!-- SOLO SI SOS ADMIN: crear codigo para invitar -->
+    <!-- usuario[3] es el rol -->
+    {% if usuario[3] == 'admin' %}
+    <form method="POST" action="/robots/{{ r[0] }}/invitar" style="margin-top:10px;">
       <button type="submit">Crear código para invitar</button>
     </form>
     {% endif %}
   </div>
   {% endfor %}
 {% else %}
-  <!-- Si no tenes robots todavia -->
   <p>Todavía no estás unido a ningún robot. Pedile un código a un admin.</p>
 {% endif %}
 
 <!-- ============================================ -->
-<!-- SECCION 3: MIS CODIGOS CREADOS             -->
-<!-- Solo aparece si vos como admin ya creaste -->
-<!-- algun codigo de invitacion                 -->
+<!-- SECCION 3: MIS CODIGOS CREADOS            -->
+<!-- Solo si sos admin y ya creaste codigos    -->
 <!-- ============================================ -->
 {% if invitaciones %}
 <h2>Mis códigos de invitación</h2>
-<!-- Recorremos todos los codigos que creaste -->
 {% for inv in invitaciones %}
   <div style="background:#eaffea; padding:10px; border-radius:8px; margin-bottom:8px;">
-    <!-- Mostramos el codigo y a que robot pertenece -->
-    Código: <b>{{ inv.codigo or inv[1] }}</b> - Robot: {{ inv.robot_id or inv[2] }}
+    Código: <b>{{ inv[1] }}</b> - Robot: {{ inv[2] }}
   </div>
 {% endfor %}
 {% endif %}
 
-{% endblock %}
+</body>
+</html>
