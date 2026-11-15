@@ -98,7 +98,7 @@
     <!-- Héroe con degradado -->
     <div class="hero-bienvenida text-white text-center p-5 mb-4 shadow">
       <span class="badge bg-white text-primary rounded-pill px-3 py-2 mb-3">✨ Cuenta nueva</span>
-      <h1 class="display-5 fw-bold mb-2">¡Bienvenido, {{ session.get('usuario').nombre }}! 👋</h1>
+      <h1 class="display-5 fw-bold mb-2">¡Hola, {{ session.get('usuario').nombre.split(' ')[0] }}! 👋</h1>
       <p class="lead mb-0 opacity-75">¿Qué querés hacer primero? · Rol: {{ session.get('usuario').rol }}</p>
     </div>
 
