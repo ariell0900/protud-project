@@ -580,7 +580,7 @@ def usuario_puede_ver_robot(usuario_id, rol, robot_id):
 # ==============================================================================
 
 # CORRECCION - Acá estaba tu error más grande.
-# ANTES TENÍAS:
+# antes tenia:
 # <<<<<<< HEAD
 #     return render_template("index.html")
 # =======
@@ -604,7 +604,10 @@ def inicio():
     Si no le mandás usuario, index.html tira error de variable no definida
     o te muestra siempre el botón de login aunque ya estés adentro.
     """
-    return render_template("index.html", usuario=session.get("usuario"))
+    usuario = session.get("usuario")
+    if usuario:
+        session["bienvenida_vista"] = True
+    return render_template("index.html", usuario=usuario)
 
 # ==============================================================================
 # PANEL
@@ -626,6 +629,22 @@ def panel():
         - COUNT(foto_url) = cuántas tienen foto
         - SELECT ... ORDER BY fecha_hora DESC LIMIT 5 = últimas 5
     """
+        # Usuario nuevo (operador sin robots): primero la bienvenida
+    usuario = session["usuario"]
+    if usuario["rol"] != "administrador" and not session.get("bienvenida_vista"):
+        try:
+            with conectar_db() as conexion:
+                with conexion.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT 1 FROM robot_usuarios WHERE usuario_id = %s LIMIT 1",
+                        (usuario["id"],),
+                    )
+                    tiene_robots = cursor.fetchone() is not None
+        except psycopg.Error:
+            tiene_robots = True
+        if not tiene_robots:
+            return redirect(url_for("inicio"))
+
     try:
         with conectar_db() as conexion:
             with conexion.cursor() as cursor:
@@ -1365,9 +1384,7 @@ def callback():
     # Hacer la sesión permanente durante el tiempo configurado
     # por Flask (12 horas en PERMANENT_SESSION_LIFETIME).
     session.permanent = True
-    return redirect(
-        url_for("panel")
-    )
+    return redirect("/")
 
 # ==============================================================================
 # USUARIOS
