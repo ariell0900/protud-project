@@ -1,114 +1,260 @@
-# Diseño de la base de datos de protud.
+# PROTUD - Base de Datos
 
-## 1. Introducción
+**Motor:** PostgreSQL en Render
+**Proyecto:** PROTUD - Robot de Vigilancia
 
-La base de datos de PROTUD permitirá almacenar y administrar
-la información necesaria para el funcionamiento del sistema
-de vigilancia robótica.
+## Diagrama Entidad-Relación
 
-El sistema contará con una aplicación web desarrollada
-en Python, desde la cual los usuarios podrán iniciar sesión,
-controlar el robot y consultar las alertas de seguridad.
+```mermaid
+erDiagram
+    usuarios ||--o{ robot_usuarios : tiene
+    robots ||--o{ robot_usuarios : tiene
+    robots ||--o{ invitaciones : genera
+    robots ||--o{ alertas : genera
+    robots ||--o{ mensajes : tiene
+    robots ||--o{ telegram_robot_usuarios : tiene
+    usuarios ||--o{ mensajes : escribe
+    usuarios ||--o{ invitaciones : crea
+    alertas ||--o{ notificaciones : genera
+    suscriptores_telegram ||--o{ telegram_robot_usuarios : tiene
 
-Para almacenar la información se propone utilizar PostgreSQL,
-una base de datos relacional.
+    usuarios {
+        int id PK
+        string nombre
+        string email
+        string rol
+        boolean activo
+    }
+    robots {
+        int id PK
+        string nombre
+        string descripcion
+    }
+    robot_usuarios {
+        int robot_id PK
+        int usuario_id PK
+    }
+    invitaciones {
+        int id PK
+        string codigo
+        int robot_id FK
+        int creado_por FK
+        datetime vence_en
+        int usos_max
+        int usos_actuales
+        boolean activo
+        datetime fecha_creacion
+    }
+    alertas {
+        int id PK
+        int robot_id FK
+        string tipo
+        string descripcion
+        string foto_url
+        datetime fecha_hora
+        boolean atendida
+    }
+    notificaciones {
+        int id PK
+        int alerta_id FK
+        string mensaje
+        datetime fecha_envio
+        boolean leida
+        string estado_envio
+    }
+    mensajes {
+        int id PK
+        int robot_id FK
+        int usuario_id FK
+        string texto
+        datetime fecha
+        boolean activo
+    }
+    suscriptores_telegram {
+        bigint chat_id PK
+        string nombre
+        boolean activo
+    }
+    telegram_robot_usuarios {
+        bigint chat_id PK
+        int robot_id PK
+    }
+```
 
-## 2. Tablas de la base de datos
+## Explicación tabla por tabla
 
-### Tabla: usuarios
+### 1. `usuarios`
 
-Almacena la información de las personas autorizadas
-a utilizar la aplicación web de PROTUD.
+Guarda a todas las personas que entraron con Google.
 
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| id | INTEGER | Identificador único del usuario |
-| nombre | VARCHAR(100) | Nombre del usuario |
-| email | VARCHAR(150) | Correo electrónico |
-| password_hash | VARCHAR(255) | Contraseña protegida mediante hash |
-| rol | VARCHAR(20) | Administrador u operador |
-| activo | BOOLEAN | Indica si el usuario está habilitado |
-| fecha_registro | TIMESTAMP | Fecha de creación de la cuenta |
+- `id`: número único
+- `nombre`: nombre de Google
+- `email`: único, no se puede repetir. Con esto se hace el login.
+- `rol`: `administrador` o `operador`. El primero que entra queda como `operador`.
+- `activo`: baja lógica. Si es `false`, no puede entrar aunque su Google sea válido. No se borra nunca.
 
-Clave primaria: id
+### 2. `robots`
 
-El correo electrónico deberá ser único.
+Cada robot de vigilancia.
 
-Las contraseñas nunca se almacenarán en texto plano.
+- `id`: número único
+- `nombre`: ejemplo Robot 1, Robot Patio
+- `descripcion`: dónde está o qué vigila
 
-### Tabla: robots
+### 3. `robot_usuarios`
 
-Almacena la información de los robots PROTUD
-registrados en el sistema.
+Tabla puente muchos a muchos. Un usuario puede tener muchos robots. Un robot puede tener muchos usuarios.
 
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| id | INTEGER | Identificador único del robot |
-| nombre | VARCHAR(100) | Nombre del robot |
-| ubicacion | VARCHAR(150) | Lugar donde opera |
-| estado | VARCHAR(30) | Activo, inactivo o desconectado |
-| fecha_registro | TIMESTAMP | Fecha de registro |
+- `robot_id` + `usuario_id` juntos son la clave.
 
-Clave primaria: id
+### 4. `invitaciones`
 
-### Tabla: alertas
+Códigos para invitar.
 
-Registra los eventos de seguridad detectados
-por los robots PROTUD.
+- `codigo`: ejemplo `PROTUD-K7Q2`, único
+- `robot_id`: a qué robot invita
+- `creado_por`: id del admin que lo creó
+- `vence_en`: vence a las 24 horas de creado
+- `usos_max`: 5 usos
+- `usos_actuales`: cuántas veces ya se usó
+- `activo`: si el admin lo revocó, queda en `false` y ya no sirve
+- `fecha_creacion`: cuándo se creó
 
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| id | INTEGER | Identificador único de la alerta |
-| robot_id | INTEGER | Robot que generó la alerta |
-| tipo | VARCHAR(50) | Tipo de alerta |
-| descripcion | TEXT | Información del evento |
-| fecha_hora | TIMESTAMP | Momento de la detección |
-| atendida | BOOLEAN | Indica si fue revisada |
+### 5. `alertas`
 
-Clave primaria: id
+Cuando el robot detecta algo.
 
-Clave foránea: robot_id, relacionada con robots.id
+- `robot_id`: qué robot la generó
+- `tipo`: movimiento, obstáculo, etc.
+- `descripcion`: texto de la alerta
+- `foto_url`: link de la foto, si tiene
+- `fecha_hora`: cuándo pasó
+- `atendida`: `false` = pendiente, `true` = atendida
 
-### Tabla: registros_actividad
+### 6. `notificaciones`
 
-Almacena las acciones realizadas por los usuarios
-desde el panel de control de PROTUD.
+Una por cada alerta, para saber si se mandó.
 
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| id | INTEGER | Identificador del registro |
-| usuario_id | INTEGER | Usuario que realizó la acción |
-| robot_id | INTEGER | Robot involucrado |
-| accion | VARCHAR(100) | Acción realizada |
-| fecha_hora | TIMESTAMP | Fecha y hora de la acción |
+- `alerta_id`: a qué alerta pertenece
+- `mensaje`: texto que se mandó
+- `fecha_envio`: cuándo se mandó
+- `leida`: si alguien la leyó
+- `estado_envio`: enviado, error, etc.
 
-Clave primaria: id
+### 7. `mensajes`
 
-Claves foráneas:
-- usuario_id, relacionada con usuarios.id
-- robot_id, relacionada con robots.id
+Chat por robot.
 
-## 3. Relaciones entre las tablas
+- `robot_id`: en qué chat está
+- `usuario_id`: quién lo escribió
+- `texto`: mensaje
+- `fecha`: cuándo lo mandó
+- `activo`: si se borró, queda en `false`, no se borra de verdad
 
-La base de datos utiliza relaciones para conectar
-la información de usuarios, robots y eventos.
+### 8. `suscriptores_telegram`
 
-Relación 1:
-Un robot puede generar múltiples alertas.
-Cada alerta pertenece a un robot.
+Gente que habló con el bot en Telegram.
 
-Relación 2:
-Un usuario puede realizar múltiples acciones.
-Cada registro de actividad pertenece a un usuario.
+- `chat_id`: id de Telegram, único
+- `nombre`: nombre de Telegram
+- `activo`: si sigue suscripto
 
-Relación 3:
-Un robot puede tener múltiples registros de actividad.
-Cada registro de actividad corresponde a un robot.
+### 9. `telegram_robot_usuarios`
 
-## 4. Diagrama de relaciones
+Unión entre Telegram y robot. Dice qué chat de Telegram recibe alertas de qué robot.
 
-El siguiente diagrama representa las relaciones
-entre las tablas principales de PROTUD.
+- `chat_id` + `robot_id` juntos son la clave.
+
+## Relaciones importantes
+
+- Un usuario tiene muchos robots, y un robot tiene muchos usuarios.
+- Un robot tiene muchas alertas, muchos mensajes, muchas invitaciones.
+- Una alerta tiene muchas notificaciones.
+- Un chat de Telegram puede estar unido a muchos robots.
+
+## Bajas lógicas
+
+No borramos nada. Usamos `activo = false` en:
+
+- `usuarios`: no puede entrar
+- `invitaciones`: código revocado
+- `mensajes`: mensaje borrado pero queda guardado
+
+## SQL completo para crear todo
+
+```sql
+CREATE TABLE IF NOT EXISTS usuarios (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(255),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  rol VARCHAR(50) DEFAULT 'operador',
+  activo BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS robots (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(255),
+  descripcion TEXT
+);
+
+CREATE TABLE IF NOT EXISTS robot_usuarios (
+  robot_id INTEGER NOT NULL,
+  usuario_id INTEGER NOT NULL,
+  PRIMARY KEY (robot_id, usuario_id)
+);
+
+CREATE TABLE IF NOT EXISTS invitaciones (
+  id SERIAL PRIMARY KEY,
+  codigo VARCHAR(50) UNIQUE NOT NULL,
+  robot_id INTEGER NOT NULL,
+  creado_por INTEGER NOT NULL,
+  vence_en TIMESTAMP,
+  usos_max INTEGER DEFAULT 5,
+  usos_actuales INTEGER DEFAULT 0,
+  activo BOOLEAN DEFAULT TRUE,
+  fecha_creacion TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS alertas (
+  id SERIAL PRIMARY KEY,
+  robot_id INTEGER NOT NULL,
+  tipo VARCHAR(100),
+  descripcion TEXT,
+  foto_url TEXT,
+  fecha_hora TIMESTAMP DEFAULT NOW(),
+  atendida BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS notificaciones (
+  id SERIAL PRIMARY KEY,
+  alerta_id INTEGER NOT NULL,
+  mensaje TEXT,
+  fecha_envio TIMESTAMP DEFAULT NOW(),
+  leida BOOLEAN DEFAULT FALSE,
+  estado_envio VARCHAR(50)
+);
+
+CREATE TABLE IF NOT EXISTS mensajes (
+  id SERIAL PRIMARY KEY,
+  robot_id INTEGER NOT NULL,
+  usuario_id INTEGER NOT NULL,
+  texto TEXT NOT NULL,
+  fecha TIMESTAMP DEFAULT NOW(),
+  activo BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS suscriptores_telegram (
+  chat_id BIGINT PRIMARY KEY,
+  nombre VARCHAR(255),
+  activo BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS telegram_robot_usuarios (
+  chat_id BIGINT NOT NULL,
+  robot_id INTEGER NOT NULL,
+  PRIMARY KEY (chat_id, robot_id)
+);
+```
 
 ```mermaid
 erDiagram
