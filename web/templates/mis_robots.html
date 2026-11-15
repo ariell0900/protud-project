@@ -1,50 +1,37 @@
-<!-- PAGINA MIS ROBOTS - VERSION SOLA, SIN BASE.HTML -->
+<!-- MIS ROBOTS - VERSION FINAL -->
+<!-- usuario = dict {"id":..., "nombre":..., "email":..., "rol":...} -->
+<!-- robots = lista de tuplas (id, nombre) -> r[0]=id, r[1]=nombre -->
+<!-- invitaciones = (id, codigo, nombre_robot, vence_en, usos_max, usos_actuales, activo) -->
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>Mis Robots - Protud</title>
-</head>
+<head><meta charset="utf-8"><title>Mis Robots - Protud</title></head>
 <body style="font-family:Arial; max-width:800px; margin:20px auto; padding:0 15px;">
 
-<!-- TITULO -->
 <h1>Mis Robots</h1>
-<!-- Saludamos al usuario. Usamos [1] porque usuario viene como lista: [id, nombre, email, rol] -->
-<p>Hola {{ usuario[1] }} 👋 - Rol: {{ usuario[3] }}</p>
-<a href="/">← Volver al inicio</a>
+<!-- usuario.nombre viene de session, rol es "administrador" no "admin" -->
+<p>Hola {{ usuario.nombre }} - Rol: {{ usuario.rol }} - {{ usuario.email }}</p>
+<a href="/">Volver al inicio</a> | <a href="/panel">Panel</a> | <a href="/logout">Salir</a>
 <hr>
 
-<!-- ============================================ -->
-<!-- SECCION 1: UNIRSE CON UN CODIGO            -->
-<!-- Para el operador que recibio un codigo    -->
-<!-- ============================================ -->
+<!-- 1. UNIRSE - rutas en app.py: /unirse y /mis-robots/unirse, las 2 andan -->
 <div style="background:#f0f0f0; padding:15px; border-radius:10px; margin-bottom:20px;">
   <h3>Unirme con un código</h3>
-  <p>Si un admin te pasó un código, ponelo acá:</p>
-  <!-- Manda el codigo al backend para unirse -->
-  <form method="POST" action="/mis-robots/unirse">
+  <form method="POST" action="/unirse">
     <input type="text" name="codigo" placeholder="Ej: PROTUD-1234" required style="padding:8px;">
     <button type="submit" style="padding:8px 15px;">Unirme</button>
   </form>
 </div>
 
-<!-- ============================================ -->
-<!-- SECCION 2: MIS ROBOTS                      -->
-<!-- Solo aparecen los robots a los que ya    -->
-<!-- te uniste. Si no hay ninguno, avisa.     -->
-<!-- ============================================ -->
+<!-- 2. MIS ROBOTS -->
 <h2>Robots que puedo ver</h2>
 {% if robots %}
   {% for r in robots %}
   <div style="border:1px solid #ddd; padding:15px; border-radius:10px; margin-bottom:10px;">
-    <!-- r[0]=id, r[1]=nombre -->
     <h3>{{ r[1] }}</h3>
     <p>ID: {{ r[0] }}</p>
-    <a href="/robot?id={{ r[0] }}">Ver alertas →</a>
-
-    <!-- SOLO SI SOS ADMIN: crear codigo para invitar -->
-    <!-- usuario[3] es el rol -->
-    {% if usuario[3] == 'admin' %}
+    <a href="/robot?id={{ r[0] }}">Ver alertas</a> |
+    <a href="/chat?robot={{ r[0] }}">Ir al chat</a>
+    {% if usuario.rol == 'administrador' %}
     <form method="POST" action="/robots/{{ r[0] }}/invitar" style="margin-top:10px;">
       <button type="submit">Crear código para invitar</button>
     </form>
@@ -55,15 +42,18 @@
   <p>Todavía no estás unido a ningún robot. Pedile un código a un admin.</p>
 {% endif %}
 
-<!-- ============================================ -->
-<!-- SECCION 3: MIS CODIGOS CREADOS            -->
-<!-- Solo si sos admin y ya creaste codigos    -->
-<!-- ============================================ -->
+<!-- 3. MIS CODIGOS - inv[0]=id, inv[1]=codigo, inv[2]=nombre_robot, inv[3]=vence, inv[4]=max, inv[5]=actuales, inv[6]=activo -->
 {% if invitaciones %}
 <h2>Mis códigos de invitación</h2>
 {% for inv in invitaciones %}
   <div style="background:#eaffea; padding:10px; border-radius:8px; margin-bottom:8px;">
-    Código: <b>{{ inv[1] }}</b> - Robot: {{ inv[2] }}
+    <b>{{ inv[1] }}</b> - Robot: {{ inv[2] }} <br>
+    Vence: {{ inv[3] }} - Usos: {{ inv[5] }}/{{ inv[4] }} - Activo: {{ inv[6] }}
+    {% if inv[6] %}
+    <form method="POST" action="/invitaciones/{{ inv[0] }}/revocar" style="display:inline;">
+      <button type="submit">Revocar</button>
+    </form>
+    {% endif %}
   </div>
 {% endfor %}
 {% endif %}
