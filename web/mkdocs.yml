@@ -1,0 +1,10 @@
+site_name: PROTUD - Manual
+nav:
+  - Inicio: manual/index.md
+  - Instalación: manual/instalacion.md
+  - Uso: manual/uso.md
+theme:
+  name: material
+  palette:
+    primary: blue
+    accent: deep purple
