@@ -96,7 +96,7 @@ protud-project/
 
 ## Equipo
 
-- **Desarrollo web:** Ariel Alfonso
+- **Desarrollo web:** Equipo de protud
 - **Proyecto:** Equipo Protud — EEST N°4
 
 📷 Instagram: [@protud_](https://instagram.com/protud_)
