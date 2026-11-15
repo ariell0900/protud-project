@@ -1,20 +1,28 @@
 <!-- =======================================================
-     MIS ROBOTS - VERSION FINAL BONITA
-     Datos que manda app.py:
+     MIS ROBOTS - VERSION FINAL CORREGIDA Y COMENTADA
+
+     Datos que manda app.py en mis_robots():
      - usuario = dict {"id":..., "nombre":..., "email":..., "rol":...}
      - robots = lista de tuplas (id, nombre) -> r[0]=id, r[1]=nombre
      - invitaciones = (id, codigo, nombre_robot, vence_en, usos_max, usos_actuales, activo)
        inv[0]=id, inv[1]=codigo, inv[2]=nombre_robot, inv[3]=vence,
        inv[4]=max, inv[5]=actuales, inv[6]=activo
+
+     Rutas que usa este archivo (NO CAMBIAR):
+     - POST /unirse -> unirse_con_codigo() en app.py
+     - POST /robots/<id>/invitar -> crear_invitacion() en app.py
+     - POST /invitaciones/<id>/revocar -> revocar_invitacion() en app.py
+     - GET /chat?robot=<id> -> chat()
+     - GET /alertas -> ver_alertas()
 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <!-- Para que se vea bien en el celu -->
+  <!-- Para que se vea bien en el celu, sin esto se ve chiquito -->
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mis Robots - Protud</title>
-  <!-- Bootstrap: estilos, botones y tarjetas ya hechos -->
+  <!-- Bootstrap: estilos, botones y tarjetas ya hechos, no hay que inventar CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     /* Héroe con degradado azul -> violeta, igual que en inicio */
@@ -38,6 +46,7 @@
       display: flex; align-items: center; justify-content: center;
       border-radius: 50%;
       font-size: 1.8rem;
+      flex-shrink: 0; /* Para que no se aplaste en el celu */
     }
   </style>
 </head>
@@ -46,13 +55,17 @@
 
   <!-- =======================================================
        1. BARRA DE ARRIBA - Igual que en inicio
-  -->
+       ======================================================= -->
   <nav class="navbar navbar-dark bg-dark shadow-sm">
     <div class="container">
+      <!-- Logo + nombre, vuelve a / -->
       <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="/">
-        <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo Protud" height="40" class="rounded">
+        <!-- CORRECCION: Si no tenés logo.jpg en static/, esto mostraba imagen rota.
+             Ahora si falla, se oculta solo con onerror. -->
+        <img src="{{ url_for('static', filename='logo.jpg') }}" alt="Logo Protud" height="40" class="rounded" onerror="this.style.display='none'">
         Protud
       </a>
+      <!-- Botones de navegación, todos existen en app.py -->
       <div class="d-flex gap-2 flex-wrap">
         <a class="btn btn-outline-light btn-sm rounded-pill px-3" href="/">🏠 Inicio</a>
         <a class="btn btn-outline-light btn-sm rounded-pill px-3" href="/chat">💬 Chat</a>
@@ -68,12 +81,14 @@
     <!-- =======================================================
          2. HÉROE - Tus datos
          usuario.nombre viene de session, rol es "administrador" no "admin"
+         CORRECCION: usuario.nombre[0] rompía si nombre era None.
+         Ahora usamos (usuario.nombre or 'P') para que nunca rompa.
     -->
     <div class="hero-mis-robots text-white p-4 p-md-5 mb-4 shadow">
       <div class="d-flex align-items-center gap-3 flex-wrap">
         <!-- Primera letra de tu nombre en un círculo blanco -->
         <div class="bg-white text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width:64px;height:64px;font-size:1.8rem;">
-          {{ usuario.nombre[0] }}
+          {{ (usuario.nombre or 'P')[0] }}
         </div>
         <div>
           <h1 class="fw-bold mb-1">🤖 Mis Robots</h1>
@@ -85,7 +100,12 @@
       </div>
     </div>
 
-    <!-- Mensajes de Flask: ej "Te uniste bien" o "Código inválido" -->
+    <!-- =======================================================
+         MENSAJES DE FLASK
+         app.py manda flash("Te uniste bien", "success") o flash("Código inválido", "error")
+         Si no ponés esto, el mensaje se guarda pero nunca se ve.
+         success = verde, error = rojo, info = celeste
+    -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -98,6 +118,7 @@
          3. UNIRSE CON CÓDIGO
          Ruta en app.py: /unirse (también anda /mis-robots/unirse)
          NO CAMBIAR EL action="/unirse" ni name="codigo"
+         app.py hace .upper() y .strip(), así que si escribís en minúscula o con espacios, igual anda.
     -->
     <div class="card shadow-sm border-0 mb-4" style="border-radius: 1.25rem;">
       <div class="card-body p-4">
@@ -106,10 +127,12 @@
           <h5 class="fw-bold mb-0">Unirme con un código</h5>
           <span class="badge bg-success rounded-pill ms-auto">Fácil</span>
         </div>
-        <p class="text-muted small mb-3">Pedile el código al dueño del robot, te lo pasa por WhatsApp. Ej: <code>PROTUD-1234</code></p>
+        <p class="text-muted small mb-3">Pedile el código al dueño del robot, te lo pasa por WhatsApp. Ej: <code>PROTUD-K7Q2</code></p>
         <form method="POST" action="/unirse" class="row g-2">
           <div class="col-sm-8">
-            <input type="text" name="codigo" placeholder="Ej: PROTUD-1234" required class="form-control form-control-lg rounded-pill text-center" style="text-transform: uppercase;">
+            <!-- text-transform: uppercase = se ve en mayúscula mientras escribís -->
+            <!-- required = no deja mandar vacío -->
+            <input type="text" name="codigo" placeholder="Ej: PROTUD-K7Q2" required class="form-control form-control-lg rounded-pill text-center" style="text-transform: uppercase;">
           </div>
           <div class="col-sm-4">
             <button type="submit" class="btn btn-dark btn-lg w-100 rounded-pill">Unirme →</button>
@@ -126,6 +149,8 @@
     <!-- =======================================================
          4. MIS ROBOTS
          robots = lista de tuplas: r[0]=id, r[1]=nombre
+         Si sos admin, app.py te manda TODOS los robots.
+         Si sos operador, solo los que tenés en robot_usuarios.
     -->
     <h3 class="fw-bold mb-3">Robots que puedo ver</h3>
 
@@ -145,13 +170,17 @@
                 </div>
               </div>
 
-              <!-- Botones: NO cambiar las rutas -->
+              <!-- Botones -->
+              <!-- CORRECCION: Antes decía /robot?id={{ r[0] }} pero /robot en app.py NO lee ?id.
+                   Siempre mostraba la última alerta de cualquier robot.
+                   Ahora: Ver alertas -> /alertas (lista completa), Chat -> /chat?robot= (sí lee ?robot=) -->
               <div class="d-flex gap-2 flex-wrap mt-3">
-                <a href="/robot?id={{ r[0] }}" class="btn btn-primary btn-sm rounded-pill px-3">🚨 Ver alertas</a>
+                <a href="/alertas" class="btn btn-primary btn-sm rounded-pill px-3">🚨 Ver alertas</a>
                 <a href="/chat?robot={{ r[0] }}" class="btn btn-outline-dark btn-sm rounded-pill px-3">💬 Ir al chat</a>
               </div>
 
               <!-- Solo el administrador puede crear códigos -->
+              <!-- OJO: en la base el rol es 'administrador', no 'admin'. Si ponés 'admin' nunca aparece el botón. -->
               {% if usuario.rol == 'administrador' %}
               <hr>
               <form method="POST" action="/robots/{{ r[0] }}/invitar">
@@ -181,6 +210,7 @@
          5. MIS CÓDIGOS DE INVITACIÓN
          invitaciones: inv[0]=id, inv[1]=codigo, inv[2]=nombre_robot,
          inv[3]=vence, inv[4]=max, inv[5]=actuales, inv[6]=activo
+         Solo se muestra si sos admin y tenés códigos. Si sos operador, invitaciones = [] y no se muestra.
     -->
     {% if invitaciones %}
     <h3 class="fw-bold mt-5 mb-3">🎟️ Mis códigos de invitación</h3>
@@ -190,7 +220,7 @@
         <!-- Si está activo: verde clarito. Si no: gris -->
         <div class="card h-100 border-0 shadow-sm" style="border-radius: 1rem; background: {{ '#eaffea' if inv[6] else '#f0f0f0' }};">
           <div class="card-body p-3">
-            <div class="d-flex justify-content-between align-items-start">
+            <div class="d-flex justify-content-between align-items-start gap-2">
               <span class="fw-bold fs-5">{{ inv[1] }}</span>
               {% if inv[6] %}
                 <span class="badge bg-success rounded-pill">Activo</span>
@@ -203,9 +233,12 @@
               Vence: {{ inv[3] }} · Usos: {{ inv[5] }}/{{ inv[4] }}
             </p>
             <!-- Barra de usos: cuántos ya se usaron -->
+            <!-- CORRECCION: Si inv[4] es 0, dividir por 0 rompe. Ahora preguntamos if inv[4] else 0 -->
             <div class="progress mb-2" style="height: 8px;">
               <div class="progress-bar bg-success" style="width: {{ (inv[5] / inv[4] * 100) if inv[4] else 0 }}%"></div>
             </div>
+            <!-- NUEVO: Botón copiar, para no copiar a mano y equivocarte -->
+            <button type="button" class="btn btn-outline-dark btn-sm w-100 rounded-pill mb-2" onclick="navigator.clipboard.writeText('{{ inv[1] }}'); this.textContent='✅ ¡Copiado!'; setTimeout(()=>{this.textContent='📋 Copiar código'}, 2000)">📋 Copiar código</button>
             {% if inv[6] %}
             <!-- Solo si está activo se puede revocar -->
             <form method="POST" action="/invitaciones/{{ inv[0] }}/revocar">
