@@ -1434,8 +1434,16 @@ def usuarios():
             "No se pudieron consultar los usuarios.",
             500,
         )
+        return (
+            "No se pudieron consultar los usuarios.",
+            500,
+        )
 
-# ==============================================================================
+@app.route("/control")
+def control():
+    return render_template("control_mqtt.html")
+
+
 # BAJA DE USUARIO
 # ==============================================================================
 

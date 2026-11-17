@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Control del robot</title>
+<style>
+:root{--fondo:#07090d;--panel:#10141b;--borde:#1e2633;--texto:#e8eef7;--suave:#7c8aa0;--led:#2ec8ff;--mal:#ff5d5d}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--fondo);color:var(--texto);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+main{height:100%;max-width:560px;margin:0 auto;padding:16px;display:grid;grid-template-rows:auto 1fr auto;gap:12px}
+header{display:flex;justify-content:space-between;align-items:center}
+h1{font-size:20px;margin:0;font-weight:650}
+.estado{display:flex;gap:14px;font-size:14px;color:var(--suave)}
+.estado span::before{content:"";display:inline-block;width:9px;height:9px;border-radius:50%;
+  background:var(--mal);margin-right:6px}
+.estado span.ok{color:var(--texto)}
+.estado span.ok::before{background:var(--led);box-shadow:0 0 8px var(--led)}
+.zona{display:grid;place-items:center;min-height:0}
+#base{position:relative;width:min(70vw,300px);aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,#151b25 0%,var(--panel) 70%);
+  border:1px solid var(--borde);touch-action:none;user-select:none;-webkit-user-select:none}
+#base::before,#base::after{content:"";position:absolute;background:var(--borde)}
+#base::before{left:50%;top:12%;bottom:12%;width:1px}
+#base::after{top:50%;left:12%;right:12%;height:1px}
+#knob{position:absolute;left:50%;top:50%;width:34%;aspect-ratio:1;margin:-17% 0 0 -17%;
+  border-radius:50%;background:#0b0f15;border:2px solid var(--led);
+  box-shadow:0 0 18px rgba(46,200,255,.55),inset 0 0 12px rgba(46,200,255,.25)}
+#base.activo #knob{box-shadow:0 0 28px rgba(46,200,255,.9),inset 0 0 14px rgba(46,200,255,.4)}
+.abajo{display:grid;gap:12px;padding-bottom:6px}
+label{display:flex;justify-content:space-between;font-size:14px;color:var(--suave);margin-bottom:6px}
+output{color:var(--texto)}
+input[type=range]{width:100%;accent-color:var(--led);height:28px}
+.camara{display:flex;gap:8px}
+.camara input{flex:1;min-width:0;background:var(--panel);border:1px solid var(--borde);color:var(--texto);
+  border-radius:10px;padding:10px 12px;font-size:15px}
+.camara a{background:var(--panel);border:1px solid var(--led);color:var(--led);text-decoration:none;
+  border-radius:10px;padding:10px 14px;font-size:15px;white-space:nowrap}
+</style></head>
+<body><main>
+  <header>
+    <h1>Robot</h1>
+    <div class="estado"><span id="eBroker">Servidor</span><span id="eRobot">Robot</span></div>
+  </header>
+  <section class="zona"><div id="base" aria-label="Joystick"><div id="knob"></div></div></section>
+  <section class="abajo">
+    <div>
+      <label for="vel">Velocidad máxima <output id="velTxt">70%</output></label>
+      <input id="vel" type="range" min="30" max="100" value="70">
+    </div>
+    <div>
+      <label for="ip">Cámara (solo en la misma red WiFi del robot)</label>
+      <div class="camara">
+        <input id="ip" placeholder="IP del robot, ej. 192.168.1.50" inputmode="decimal">
+        <a id="verCam" href="#" target="_blank" rel="noopener">Ver cámara</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+<script>
+// Tiene que ser IGUAL a TEMA_BASE del programa del ESP32
+const TEMA_BASE = 'protud/robot-ari-9f3k2x';
+const BROKER = 'wss://broker.hivemq.com:8884/mqtt';
+
+const eBroker=document.getElementById('eBroker'), eRobot=document.getElementById('eRobot');
+const base=document.getElementById('base'), knob=document.getElementById('knob');
+const vel=document.getElementById('vel'), velTxt=document.getElementById('velTxt');
+let x=0, y=0, activo=false;
+
+// ----- MQTT -----
+const cliente = mqtt.connect(BROKER, {reconnectPeriod: 2000});
+cliente.on('connect', function(){
+  eBroker.className='ok';
+  cliente.subscribe(TEMA_BASE+'/estado');
+});
+cliente.on('close', function(){ eBroker.className=''; eRobot.className=''; });
+cliente.on('message', function(tema, msg){
+  eRobot.className = (msg.toString()==='online') ? 'ok' : '';
+});
+function enviar(l,r){
+  if(cliente.connected) cliente.publish(TEMA_BASE+'/cmd', l+','+r, {qos:0});
+}
+
+// ----- Joystick -----
+vel.oninput=function(){velTxt.textContent=vel.value+'%';};
+
+function pwm(v){
+  const a=Math.abs(v);
+  if(a<0.08) return 0;
+  const tope=Math.max(110,255*vel.value/100);
+  return Math.sign(v)*Math.round(90+a*(tope-90));
+}
+function calcular(){
+  const avance=-y, giro=x*0.85;
+  const l=Math.max(-1,Math.min(1,avance+giro));
+  const r=Math.max(-1,Math.min(1,avance-giro));
+  return [pwm(l),pwm(r)];
+}
+function mueve(e){
+  const b=base.getBoundingClientRect(), R=b.width/2;
+  let dx=e.clientX-(b.left+R), dy=e.clientY-(b.top+R);
+  const d=Math.hypot(dx,dy), max=R*0.66;
+  if(d>max){dx*=max/d;dy*=max/d;}
+  knob.style.transform='translate('+dx+'px,'+dy+'px)';
+  x=dx/max; y=dy/max;
+}
+base.addEventListener('pointerdown',function(e){
+  activo=true; base.classList.add('activo'); base.setPointerCapture(e.pointerId); mueve(e);
+});
+base.addEventListener('pointermove',function(e){ if(activo) mueve(e); });
+function soltar(){
+  activo=false; x=0; y=0; base.classList.remove('activo');
+  knob.style.transform='translate(0,0)';
+  enviar(0,0); setTimeout(function(){enviar(0,0);},120);
+}
+base.addEventListener('pointerup',soltar);
+base.addEventListener('pointercancel',soltar);
+setInterval(function(){ if(activo){ const p=calcular(); enviar(p[0],p[1]); } },100);
+
+// ----- Enlace a la cámara local -----
+const ip=document.getElementById('ip'), verCam=document.getElementById('verCam');
+try{ ip.value=localStorage.getItem('ipRobot')||''; }catch(e){}
+function actualizarEnlace(){
+  const v=ip.value.trim();
+  verCam.href = v ? 'http://'+v+':81/stream' : '#';
+  try{ localStorage.setItem('ipRobot',v); }catch(e){}
+}
+ip.addEventListener('input',actualizarEnlace);
+actualizarEnlace();
+</script>
+</body></html>
