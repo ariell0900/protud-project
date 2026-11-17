@@ -759,7 +759,7 @@ def control():
     Queda protegida porque podría contener controles
     que no deben estar disponibles públicamente.
     """
-    return render_template("control.html")
+    return render_template("control_mqtt.html")
 
 # ==============================================================================
 # FOTOS
@@ -1438,11 +1438,6 @@ def usuarios():
             "No se pudieron consultar los usuarios.",
             500,
         )
-
-@app.route("/control")
-def control_mqtt():
-    return render_template("control_mqtt.html")
-
 
 # BAJA DE USUARIO
 # ==============================================================================
