@@ -1440,7 +1440,7 @@ def usuarios():
         )
 
 @app.route("/control")
-def control():
+def control_mqtt():
     return render_template("control_mqtt.html")
 
 
