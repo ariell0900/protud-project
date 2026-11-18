@@ -1,113 +1,97 @@
-# PROTUD - Manual de Instalación y Uso
+PROTUD – Manual de instalación y uso
 
-**Proyecto:** PROTUD - Robot de Vigilancia
-**Materia:** Proyecto Final
-**Profesor:** Leonardo Baldelli
-**Integrantes:** Ariel Alfonso - Equipo Protud
-**Tecnologías:** Python + Flask + PostgreSQL + Google OAuth2 / OpenID + Telegram Bot API + Render + MkDocs
+Proyecto: PROTUD – Robot de Vigilancia
+Materia: Proyecto Final
+Profesor: Leonardo Baldelli
+Integrantes: Ariel Alfonso – Equipo PROTUD
+Tecnologías utilizadas: Python, Flask, PostgreSQL, Google OAuth2, Telegram y Render.
 
----
+¿De qué trata el proyecto?
 
-## ¿Qué es PROTUD?
+PROTUD es un sistema que desarrollamos para poder controlar y monitorear un robot de vigilancia desde una página web.
 
-PROTUD es una aplicación web para controlar y monitorear un robot de vigilancia.
+La idea principal es que los usuarios puedan ver las alertas que genera el robot, recibir notificaciones por Telegram y comunicarse mediante un chat. También permite agregar otros usuarios utilizando códigos de invitación.
 
-Permite ver alertas en tiempo real, chatear por robot, invitar usuarios con códigos y recibir notificaciones por Telegram.
+Para entrar a la página usamos una cuenta de Google, así no es necesario crear otro usuario y contraseña.
 
-No usa usuario y contraseña propios. El acceso es con cuenta de Google, usando OAuth2 y OpenID Connect.
+Funciones de PROTUD
 
-## ¿Qué puede hacer?
+La página tiene distintas opciones que permiten utilizar el sistema:
 
-- Entrar con Google, sin registrarse a mano
-- Ver panel con alertas pendientes, alertas de las últimas 24 horas y últimas 5 alertas
-- Ver y gestionar Mis Robots
-- Crear códigos de invitación tipo `PROTUD-K7Q2`
-- Unirse a un robot con código, desde la web o desde Telegram
-- Chatear en vivo por robot, se actualiza solo cada 2 segundos
-- Ver alertas con foto, marcarlas como atendidas o deshacer
-- Recibir alertas por Telegram
-- Usar el bot de Telegram con comandos `/start`, `/unirme`, `/mis_espacios`, `/ayuda`
-- Gestionar usuarios: cambiar rol administrador / operador, dar de baja y reactivar
+- Iniciar sesión con Google.
+- Ver las alertas que genera el robot.
+- Consultar los robots que tenemos vinculados.
+- Crear códigos para invitar a otros usuarios.
+- Unirse a un robot colocando un código.
+- Utilizar el chat para comunicarse.
+- Ver las alertas y sus fotografías.
+- Marcar una alerta como atendida.
+- Recibir notificaciones mediante Telegram.
+- Administrar los usuarios que tienen acceso al sistema.
 
-## Roles
+Usuarios y permisos
 
-### Administrador
-- Puede crear códigos de invitación
-- Puede revocar códigos
-- Puede ver y gestionar usuarios en `/usuarios`
-- Puede cambiar roles
-- Puede dar de baja y reactivar usuarios
-- Puede borrar cualquier mensaje del chat
-- Puede probar alertas con `/simular-alerta` y `/probar-telegram`
+En PROTUD tenemos dos tipos de usuarios: administrador y operador.
 
-### Operador
-- Puede unirse a robots con código
-- Puede ver sus robots en `/mis-robots`
-- Puede chatear
-- Puede ver alertas de sus robots
-- Solo puede borrar sus propios mensajes
-- No puede entrar a `/usuarios`
+Administrador:
 
-## Estructura del proyecto
-protud/
-├── app.py                  -> App principal: rutas, login Google, Mis Robots, Chat, Alertas, Webhook Telegram
-├── telegram_service.py     -> Funciones para enviar alertas a Telegram
-├── requirements.txt        -> Dependencias: Flask, gunicorn, psycopg2, google-auth, requests, etc.
-├── mkdocs.yml              -> Configuración del manual con MkDocs
-├── templates/
-│   ├── index.html          -> Página principal / login
-│   ├── panel.html          -> Panel de alertas
-│   ├── mis_robots.html     -> Mis Robots, crear código, unirse con código
-│   ├── chat.html           -> Chat por robot
-│   ├── alertas.html        -> Lista de alertas pendientes y atendidas
-│   ├── usuarios.html       -> Gestión de usuarios (solo admin)
-│   └── base.html           -> Plantilla base con menú
-├── static/
-│   ├── logo.jpg
-│   └── robot.jpg
-└── docs/
-    ├── database-schemas.md -> Diagrama Entidad-Relación de la base de datos
-    ├── autenticacion.md    -> Documentación de OAuth2, usuarios y bajas lógicas
-    └── manual/
-        ├── index.md        -> Este archivo: presentación
-        ├── instalacion.md  -> Cómo instalar y desplegar
-        └── uso.md          -> Cómo usar la app paso a paso
+Es el que tiene más permisos dentro de la página. Puede crear códigos de invitación, administrar los usuarios, cambiar sus roles, dar de baja o reactivar cuentas y eliminar mensajes del chat.
 
+También puede realizar pruebas para comprobar que las alertas y Telegram funcionen correctamente.
 
+Operador:
 
+Es el usuario que utiliza las funciones principales del sistema. Puede vincularse con robots mediante códigos, consultar las alertas, entrar al chat y enviar mensajes.
 
-## Base de datos
+La diferencia es que no puede acceder a la parte de administración ni modificar los permisos de otros usuarios.
 
-Base de datos: PostgreSQL en Render
+Archivos y carpetas del proyecto
 
-Tablas:
-- `usuarios` - usuarios que entran con Google
-- `robots` - robots de vigilancia
-- `robot_usuarios` - unión muchos a muchos entre usuarios y robots
-- `invitaciones` - códigos tipo `PROTUD-XXXX`
-- `alertas` - alertas generadas por los robots
-- `notificaciones` - notificaciones generadas por cada alerta
-- `mensajes` - mensajes del chat por robot
-- `suscriptores_telegram` - usuarios de Telegram que hablaron con el bot
-- `telegram_robot_usuarios` - unión entre chat de Telegram y robot
+Para organizar mejor el proyecto, separamos los archivos según la función que cumple cada uno.
 
-El diagrama completo está en `docs/database-schemas.md`.
+El archivo "app.py" es uno de los más importantes porque contiene las rutas y las funciones principales de la aplicación.
 
-## Código comentado
+También tenemos:
 
-Todo el código en `app.py` está comentado en español, función por función:
+- "telegram_service.py": se utiliza para enviar mensajes y alertas a Telegram.
+- "requirements.txt": contiene las librerías que necesita el proyecto.
+- "mkdocs.yml": sirve para configurar el manual.
 
-- `login_required` - obliga a estar logueado
-- `admin_required` - obliga a ser administrador
-- `usuario_puede_ver_robot` - verifica si el usuario tiene acceso a ese robot
-- `login()` y `callback()` - flujo de Google OAuth2
-- `crear_invitacion()` - genera código `PROTUD-XXXX`
-- `unirse_con_codigo()` - une al usuario con el código
-- `chat()` y `api_mensajes()` - chat en vivo
-- `webhook()` - recibe mensajes de Telegram
-- `simular_alerta()` y `probar_telegram()` - pruebas para el admin
+En la carpeta "templates" están los archivos HTML de las distintas páginas, como el inicio de sesión, el panel, Mis Robots, el chat y las alertas.
 
-## Cómo leer este manual
+En "static" guardamos las imágenes y el logo que aparecen en la página.
 
-1. Si querés instalarlo, andá a **Instalación**
-2. Si ya está instalado y querés usarlo, andá a **Uso**
+La carpeta "docs" contiene los archivos donde explicamos cómo funciona el sistema, cómo instalarlo y cómo está organizada la base de datos.
+
+Base de datos
+
+Para guardar los datos de PROTUD utilizamos PostgreSQL, que está conectada al proyecto mediante Render.
+
+Tenemos varias tablas para guardar la información:
+
+- "usuarios": guarda los datos de los usuarios.
+- "robots": contiene los robots registrados.
+- "robot_usuarios": relaciona los usuarios con los robots.
+- "invitaciones": guarda los códigos que se utilizan para unirse.
+- "alertas": almacena las alertas generadas.
+- "notificaciones": guarda las notificaciones.
+- "mensajes": contiene los mensajes del chat.
+- "suscriptores_telegram": registra los usuarios que utilizan Telegram.
+- "telegram_robot_usuarios": relaciona las cuentas de Telegram con los robots.
+
+El diagrama de la base de datos se encuentra en el archivo "database-schemas.md".
+
+Funcionamiento del código
+
+La mayor parte del funcionamiento está dentro de "app.py". Ahí se encuentran las funciones para iniciar sesión, controlar los permisos, crear invitaciones, unir usuarios a los robots y administrar el chat.
+
+También se encuentra la parte que recibe los mensajes de Telegram y permite realizar algunas pruebas, como generar alertas de ejemplo.
+
+Cómo consultar el manual
+
+El manual está dividido en dos partes para que sea más fácil encontrar la información:
+
+- Instalación: explica los pasos necesarios para instalar y poner en funcionamiento PROTUD.
+- Uso: explica cómo ingresar a la página y utilizar sus diferentes opciones.
+
+Con este manual buscamos dejar explicado cómo está organizado el proyecto y cómo puede utilizarse.
