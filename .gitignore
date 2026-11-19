@@ -12,3 +12,6 @@ __pycache__/
 .coverage
 web/templates/*viej*.html
 *~
+
+# Datos privados del robot (WiFi y tema MQTT)
+firmware/**/secretos.h

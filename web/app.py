@@ -32,7 +32,8 @@ ARCHIVOS QUE USA ESTA APP:
 - telegram_service.py     -> funciones para mandar alertas y fotos a Telegram
 - templates/*.html        -> las páginas (index, panel, chat, mis_robots, etc)
 - static/*                -> css, js, imágenes
-- .env                    -> secretos (SECRET_KEY, GOOGLE_*, DATABASE_URL, TELEGRAM_BOT_TOKEN)
+- .env                    -> secretos (SECRET_KEY, GOOGLE_*, DATABASE_URL, TELEGRAM_BOT_TOKEN,
+                             MQTT_TEMA)
 
 CÓMO CORRE:
 
@@ -758,8 +759,37 @@ def control():
 
     Queda protegida porque podría contener controles
     que no deben estar disponibles públicamente.
+
+    CAMBIO (modo local + tema secreto):
+    Antes el tema MQTT estaba escrito en control_mqtt.html.
+    Como el repo es público, cualquiera podía leerlo y mover el robot
+    mandando mensajes al broker público (broker.hivemq.com).
+    Ahora el tema se lee de la variable de entorno MQTT_TEMA
+    (.env en tu compu, Environment en Render) y Flask se lo pasa al HTML.
     """
-    return render_template("control_mqtt.html")
+    # MQTT_TEMA = el "canal" por donde viajan las órdenes del joystick.
+    # Ejemplo: protud/robot-x7Kq29mZpL4w
+    # Tiene que ser EXACTAMENTE IGUAL en los 3 lugares:
+    #   1) secretos.h del ESP32 (TEMA_BASE_S)
+    #   2) .env de tu compu
+    #   3) Environment de Render
+    # Si no coinciden, el joystick manda las órdenes a un canal
+    # que el robot no escucha y no se mueve.
+    tema = os.getenv("MQTT_TEMA")
+
+    # Si nos olvidamos de cargar la variable, avisamos con un error claro
+    # en vez de mostrar un joystick que no hace nada.
+    if not tema:
+        return (
+            "Falta la variable MQTT_TEMA en el .env o en Render.",
+            500,
+        )
+
+    # tema_mqtt = nombre con el que lo usa control_mqtt.html:
+    #   const TEMA_BASE = {{ tema_mqtt|tojson }};
+    # |tojson = lo pone entre comillas y escapa caracteres raros,
+    # así nadie puede romper el JavaScript con un tema mal escrito.
+    return render_template("control_mqtt.html", tema_mqtt=tema)
 
 # ==============================================================================
 # FOTOS

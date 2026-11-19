@@ -49,10 +49,11 @@ input[type=range]{width:100%;accent-color:var(--led);height:28px}
       <input id="vel" type="range" min="30" max="100" value="70">
     </div>
     <div>
-      <label for="ip">Cámara (solo en la misma red WiFi del robot)</label>
+      <label for="ip">En la misma red WiFi del robot (sin demora)</label>
       <div class="camara">
         <input id="ip" placeholder="IP del robot, ej. 192.168.1.50" inputmode="decimal">
-        <a id="verCam" href="#" target="_blank" rel="noopener">Ver cámara</a>
+        <a id="verLocal" href="#" target="_blank" rel="noopener">Modo local</a>
+        <a id="verCam" href="#" target="_blank" rel="noopener">Cámara</a>
       </div>
     </div>
   </section>
@@ -60,8 +61,9 @@ input[type=range]{width:100%;accent-color:var(--led);height:28px}
 
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
 <script>
-// Tiene que ser IGUAL a TEMA_BASE del programa del ESP32
-const TEMA_BASE = 'protud/robot-ari-9f3k2x';
+// Tiene que ser IGUAL a TEMA_BASE_S de secretos.h del ESP32
+// Lo manda Flask desde la variable de entorno MQTT_TEMA (no queda escrito en GitHub)
+const TEMA_BASE = {{ tema_mqtt|tojson }};
 const BROKER = 'wss://broker.hivemq.com:8884/mqtt';
 
 const eBroker=document.getElementById('eBroker'), eRobot=document.getElementById('eRobot');
@@ -119,12 +121,14 @@ base.addEventListener('pointerup',soltar);
 base.addEventListener('pointercancel',soltar);
 setInterval(function(){ if(activo){ const p=calcular(); enviar(p[0],p[1]); } },100);
 
-// ----- Enlace a la cámara local -----
+// ----- Enlaces al modo local y a la cámara (solo en la misma red) -----
 const ip=document.getElementById('ip'), verCam=document.getElementById('verCam');
+const verLocal=document.getElementById('verLocal');
 try{ ip.value=localStorage.getItem('ipRobot')||''; }catch(e){}
 function actualizarEnlace(){
   const v=ip.value.trim();
   verCam.href = v ? 'http://'+v+':81/stream' : '#';
+  verLocal.href = v ? 'http://'+v+':8080' : '#';
   try{ localStorage.setItem('ipRobot',v); }catch(e){}
 }
 ip.addEventListener('input',actualizarEnlace);
