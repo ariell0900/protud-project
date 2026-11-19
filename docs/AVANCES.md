@@ -1,24 +1,19 @@
-# Registro de avances — PROTUD
+# Mi opinión sobre el proyecto PROTUD
 
-## Etapa 1 (objetivo)
-El robot saca una foto con la ESP32-CAM al detectar un evento, manda una alerta por WiFi con la foto y el usuario la ve en la web y en Telegram.
+Para mí, PROTUD es un proyecto muy interesante porque no se trata solamente de construir un robot, sino también de desarrollar un sistema que permita vigilar y recibir alertas cuando ocurre algún evento.
 
----
+Hasta ahora avanzamos bastante. Pudimos crear la base de datos, conectar Python con PostgreSQL, desarrollar una página web con Flask y configurar un bot de Telegram para recibir notificaciones.
 
-## 16/10/2026 — Base de datos
-- Se instaló PostgreSQL y se creó la base `protud`.
-- Tablas iniciales: `usuarios`, `robots`, `alertas` (probadas con datos simulados).
-- Se armó el Mini Protud de cartón con las medidas de los diseños para la presentación.
+También tenemos una idea bastante clara de cómo queremos que funcione el robot: que la cámara ESP32-CAM pueda sacar una foto cuando detecte algo y que esa imagen llegue junto con una alerta para poder verla desde la página web o Telegram.
 
-## 17/10/2026 — Avisos por Telegram
-- Decisión: **Telegram** es el canal principal de avisos; el historial queda en la web.
-- Se creó el bot **@ProtudVigilanciaBot** y se recibió la primera alerta desde Python.
-- Integración PostgreSQL + Flask + Telegram: la alerta se guarda, se envía y se registra si el envío salió bien.
-- Nuevas tablas: `imagenes` y `notificaciones` (total: 5).
+Creo que lo más importante que nos falta es terminar de integrar el robot con todo el sistema y comprobar que funcione correctamente.
 
-## 18/10/2026 — Página web
-- Portada con Bootstrap: logo, título "Siempre atento, siempre en movimiento", tarjetas de vista previa y pie de página con Instagram y GitHub.
-- `/alertas`: etiquetas Pendiente/Atendida, fecha formateada, botones **Marcar como atendida** y **Deshacer** (rutas POST que actualizan PostgreSQL).
-- `/fotos`: lista de fotos de ejemplo.
-- `/panel`: números reales de la base (pendientes, últimas 24 h, imágenes) y tabla con las 5 alertas más nuevas.
-- `/robot`: tarjeta "Última alerta" con datos reales e imagen de ejemplo del diseño conceptual.
+Más adelante estaría bueno agregar inteligencia artificial para que PROTUD pueda reconocer si lo que detecta es una persona, un animal u otro objeto.
+
+## Conclusión personal
+
+En lo personal, me parece que PROTUD fue una experiencia muy buena porque aprendí cosas nuevas y pude trabajar con herramientas que antes no conocía tanto. Al principio algunas partes parecían bastante complicadas, pero de a poco fuimos resolviendo los problemas y viendo cómo todo empezaba a funcionar.
+
+Estoy conforme con lo que logramos hasta ahora, especialmente porque no nos quedamos solamente con la idea, sino que también desarrollamos una página web, una base de datos y las notificaciones.
+
+Sé que todavía quedan cosas por mejorar, pero creo que todo el esfuerzo que hicimos valió la pena. Me gustaría que PROTUD siga creciendo y que en un futuro podamos tener el robot funcionando completamente como lo imaginamos.

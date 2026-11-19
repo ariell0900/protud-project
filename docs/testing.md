@@ -1,65 +1,69 @@
-# PROTUD - Pruebas
+PROTUD – Pruebas del sistema
 
-No tenemos tests automáticos. Las pruebas son manuales, con checklist.
+Para comprobar que el sistema PROTUD funciona correctamente, vamos a realizar distintas pruebas de forma manual. En cada apartado se revisará que las funciones principales trabajen como corresponde.
 
-## 1. Login
+1. Inicio de sesión
 
-- [ ] Entrar con Google como usuario nuevo -> queda como operador
-- [ ] Entrar con Google como usuario existente -> entra directo
-- [ ] Entrar como usuario dado de baja -> no deja entrar, muestra inactivo
-- [ ] Salir -> cierra sesión, no deja entrar a /panel sin login
-- [ ] Entrar a /panel sin login -> redirige a login
-- [ ] Entrar a /usuarios como operador -> te saca
+- [ ] Probar ingresar con una cuenta de Google nueva.
+- [ ] Comprobar que un usuario que ya tiene cuenta pueda entrar.
+- [ ] Verificar que un usuario dado de baja no pueda ingresar.
+- [ ] Comprobar que al cerrar sesión se salga correctamente.
+- [ ] Intentar entrar al panel sin iniciar sesión.
+- [ ] Verificar que un operador no pueda entrar a la sección de usuarios.
 
-## 2. Mis Robots y códigos
+2. Robots y códigos de acceso
 
-- [ ] Admin crea código -> se genera PROTUD-XXXX
-- [ ] Código dura 24hs, 5 usos
-- [ ] Operador se une con código válido en web -> aparece robot
-- [ ] Operador se une con código vencido -> error
-- [ ] Operador se une con código ya usado 5 veces -> error
-- [ ] Operador se une con código revocado -> error
-- [ ] Admin revoca código -> ya no sirve
+- [ ] Comprobar que el administrador pueda crear un código.
+- [ ] Verificar que el código se genere correctamente con el nombre PROTUD.
+- [ ] Comprobar que el código dure 24 horas y permita 5 usos.
+- [ ] Probar unir un robot usando un código válido.
+- [ ] Probar ingresar un código vencido.
+- [ ] Comprobar qué pasa cuando el código ya llegó a sus 5 usos.
+- [ ] Verificar que un código revocado ya no permita ingresar.
 
-## 3. Telegram
+3. Funcionamiento de Telegram
 
-- [ ] Mandar /start -> responde bienvenida
-- [ ] Mandar /unirme PROTUD-XXXX válido -> se une
-- [ ] Mandar /unirme con código inválido -> error
-- [ ] Mandar /mis_espacios -> muestra robots
-- [ ] Mandar /ayuda -> muestra comandos
-- [ ] Generar alerta con /simular-alerta -> llega a Telegram con foto
-- [ ] Probar /probar-telegram -> llega mensaje de prueba
+- [ ] Enviar el comando /start y comprobar que llegue el mensaje de bienvenida.
+- [ ] Probar el comando /unirme con un código válido.
+- [ ] Probar el mismo comando con un código incorrecto.
+- [ ] Enviar /mis_espacios para ver los robots vinculados.
+- [ ] Enviar /ayuda para consultar los comandos disponibles.
+- [ ] Simular una alerta y comprobar que llegue a Telegram con una foto.
+- [ ] Probar el envío de un mensaje de prueba.
 
-## 4. Chat
+4. Chat del sistema
 
-- [ ] Entrar a /chat?robot=1 con acceso -> muestra chat
-- [ ] Entrar a /chat?robot=1 sin acceso -> te saca
-- [ ] Mandar mensaje -> aparece en menos de 2 segundos
-- [ ] Otro usuario ve el mensaje sin recargar
-- [ ] Operador borra su mensaje -> se borra
-- [ ] Operador intenta borrar mensaje de otro -> no puede
-- [ ] Admin borra cualquier mensaje -> se borra
+- [ ] Comprobar que un usuario autorizado pueda entrar al chat.
+- [ ] Verificar que alguien sin permiso no pueda acceder.
+- [ ] Enviar un mensaje y comprobar que aparezca rápidamente.
+- [ ] Verificar que otro usuario pueda verlo sin actualizar la página.
+- [ ] Comprobar que cada operador pueda borrar sus propios mensajes.
+- [ ] Verificar que un operador no pueda borrar mensajes de otras personas.
+- [ ] Comprobar que el administrador pueda borrar cualquier mensaje.
 
-## 5. Alertas
+5. Sistema de alertas
 
-- [ ] Ir a /alertas -> muestra pendientes y atendidas
-- [ ] Apretar Atender -> pasa a atendidas
-- [ ] Apretar Deshacer -> vuelve a pendientes
-- [ ] Ir a /panel -> muestra pendientes, últimas 24hs y últimas 5
-- [ ] Simular alerta -> aparece en /alertas y en /panel
+- [ ] Entrar a la sección de alertas y comprobar que aparezcan las pendientes y las atendidas.
+- [ ] Probar el botón Atender.
+- [ ] Comprobar que el botón Deshacer devuelva la alerta a pendientes.
+- [ ] Revisar que el panel muestre las alertas de las últimas 24 horas y las últimas 5.
+- [ ] Generar una alerta de prueba y verificar que aparezca en el panel y en la sección de alertas.
 
-## 6. Usuarios
+6. Administración de usuarios
 
-- [ ] Admin entra a /usuarios -> ve lista
-- [ ] Cambiar rol operador a administrador -> cambia
-- [ ] Cambiar rol administrador a operador -> cambia
-- [ ] Dar de baja usuario -> queda activo=false, no puede entrar
-- [ ] Reactivar usuario -> queda activo=true, puede entrar de nuevo
+- [ ] Comprobar que el administrador pueda ver la lista de usuarios.
+- [ ] Probar cambiar un usuario de operador a administrador.
+- [ ] Probar cambiar un administrador a operador.
+- [ ] Dar de baja un usuario y comprobar que ya no pueda ingresar.
+- [ ] Reactivar un usuario y verificar que pueda volver a entrar.
 
-## 7. Deploy
+7. Publicación del sistema
 
-- [ ] App en Render está Live
-- [ ] Login con Google en producción anda
-- [ ] Webhook de Telegram configurado
-- [ ] Base de datos conectada
+- [ ] Comprobar que la página esté funcionando en Render.
+- [ ] Verificar que el inicio de sesión con Google funcione correctamente.
+- [ ] Revisar que Telegram esté conectado.
+- [ ] Comprobar que la base de datos esté funcionando.
+
+Conclusión:
+
+Con estas pruebas buscamos comprobar que todas las partes de PROTUD funcionen correctamente, tanto la página web como el sistema de alertas, los robots y Telegram. Si encontramos algún error, lo corregiremos para que el sistema esté listo para su presentación.
